@@ -15,6 +15,7 @@ import OpenGL.GLUT as glut
 class Task(object):
 	currentframe = -1
 	dt = -1
+	background_color = (0.,0.,0.,0.)
 
 	"""
 	Base class for all tasks.
@@ -101,7 +102,7 @@ class DotFlashTask(Task):
 		# build an OpenGL display list for the dot
 		self.dot = gl.glGenLists(1)
 		gl.glNewList(self.dot,gl.GL_COMPILE)
-		gl.glColor3f(*self.color)
+		gl.glColor4f(*self.dot_color)
 		gl.glBegin(gl.GL_POLYGON)
 		for angle in np.linspace(0.,2*np.pi,self.nvertices,endpoint=False):
 			gl.glVertex3f(np.sin(angle)*self.radius,np.cos(angle)*self.radius,0.)
@@ -126,7 +127,7 @@ class DotFlashTask(Task):
 		# stim specific stuff
 		pd.update({'offtimes':self.offtimes})
 		pd.update({'radius':self.radius})
-		pd.update({'color':self.color})
+		pd.update({'dot_color':self.dot_color})
 		pd.update({'permutation':self.permutation})
 		pd.update({'xpos':self.xpos})
 		pd.update({'ypos':self.ypos})
@@ -212,7 +213,7 @@ class dotflash1(DotFlashTask):
 	# stimulus-specific parameters
 	gridshape = (6,6)
 	gridlim = (0.9,0.9)
-	color = (1.,1.,1.)
+	dot_color = (1.,1.,1.,1.)
 	radius = 0.075
 	nvertices = 64
 
@@ -262,3 +263,11 @@ class dotflash2_2hz(dotflash2):
 	"""
 	taskname = 'dotflash2_2hz'
 	scan_hz = 2.
+
+class dotflash1_inverted(dotflash1):
+	background_color = (1.,1.,1.,1.)
+	dot_color = (0.,0.,0.,1.)
+
+class dotflash2_inverted(dotflash2):
+	background_color = (1.,1.,1.,1.)
+	dot_color = (0.,0.,0.,1.)

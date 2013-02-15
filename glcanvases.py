@@ -210,7 +210,11 @@ class StimCanvas(GLCanvas):
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
 		gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-		gl.glClearColor(0., 0., 0., 0.)		# should vary this according to the task!
+
+		if self.master.current_task:
+			gl.glClearColor(*self.master.current_task.background_color)
+		else:
+			gl.glClearColor(0., 0., 0., 0.)
 
 		gl.glPushMatrix()
 
@@ -353,6 +357,7 @@ class PreviewCanvas(GLCanvas):
 		gl.glTranslatef(-0.5,-0.5,0.0);
 
 		# draw the texture
+		gl.glColor4f(1.,1.,1.,1.)
 		gl.glBegin( gl.GL_QUADS )
 		gl.glTexCoord2f( 0, 1 );	gl.glVertex2f( 0, 1 )
 		gl.glTexCoord2f( 0, 0 );	gl.glVertex2f( 0, 0 )
@@ -368,6 +373,7 @@ class PreviewCanvas(GLCanvas):
 		# we can only draw after the master canvas has already done so,
 		# otherwise we won't have an OpenGL context
 		if self.stimcanvas.done_postinit:
+			self.currsize = self.GetSize()
 			self.onDraw()
 
 	def onDraw(self):
@@ -382,8 +388,7 @@ class PreviewCanvas(GLCanvas):
 			self.postinit()
 			self.done_postinit = True
 
-		w,h = self.GetSize()
-		gl.glViewport(0,0,w,h)
+		gl.glViewport(0,0,*self.currsize)
 
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
@@ -393,7 +398,7 @@ class PreviewCanvas(GLCanvas):
 		gl.glLoadIdentity()
 
 		# clear the buffers
-		gl.glClear( gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT )
+		# gl.glClear( gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT )
 
 		# bind the master's FBO texture
 		gl.glEnable(gl.GL_TEXTURE_2D)
@@ -423,7 +428,7 @@ class PreviewCanvas(GLCanvas):
 			# in display space
 			preview_x,preview_y = event.GetX(),event.GetY()
 
-			p_w,p_h = self.GetSize()
+			p_w,p_h = self.currsize
 			d_h,d_w = self.master.x_resolution,self.master.y_resolution
 
 			display_x = (d_w)*(1. - float(preview_x)/p_w)
