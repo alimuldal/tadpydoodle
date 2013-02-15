@@ -59,7 +59,7 @@ class TaskPanel(wx.Panel):
 
 		self.SetSizerAndFit(sizer)
 
-	def onRunTask(self,event):
+	def onRunTask(self,event=False):
 		obj = self.startbutton
 		if self.master.current_task:
 			running = obj.ref.get()
@@ -79,16 +79,20 @@ class TaskPanel(wx.Panel):
 			obj.SetValue(True)
 
 	def onReload(self,event):
+		if self.master.run_task:
+			self.onRunTask()
 		self.master.loadTasks()
+		self.taskmenu.SetValue('- Select a task -')
 		self.taskmenu.SetItems(self.master.taskdict.keys()[::-1])
 
 	def onChooseTask(self,event):
 		if self.master.run_task:
-			self.master.run_task = False
-			l,c = self.startbutton.start
-			self.startbutton.SetValue(False)
-			self.startbutton.SetLabel(l)
-			self.startbutton.SetBackgroundColour(c)
+			self.onRunTask()
+			# self.master.run_task = False
+			# l,c = self.startbutton.start
+			# self.startbutton.SetValue(False)
+			# self.startbutton.SetLabel(l)
+			# self.startbutton.SetBackgroundColour(c)
 		taskname = event.GetString()
 		task_class = self.master.taskdict[taskname]
 		self.master.current_task = task_class(self.master.stimcanvas)
@@ -110,7 +114,7 @@ class StatusPanel(wx.Panel):
 		self.progressbar = wx.Gauge(self,-1,range=100)
 		timelabel = wx.StaticText(self,-1,'Remaining:',size=(70,-1),style=wx.ALIGN_RIGHT)
 		self.time = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
-		framelabel = wx.StaticText(self,-1,'Frame:',size=(70,-1),style=wx.ALIGN_RIGHT)
+		framelabel = wx.StaticText(self,-1,'Scan:',size=(70,-1),style=wx.ALIGN_RIGHT)
 		self.frame = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
 		fpslabel = wx.StaticText(self,-1,'Min FPS:',size=(70,-1),style=wx.ALIGN_RIGHT)
 		self.fps = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
@@ -479,6 +483,8 @@ class OptionPanel(wx.Panel):
 		caller = self.checkboxes['run_loop']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
+		# kick-start the rendering loop by forcing a draw event
+		self.master.stimcanvas.onDraw()
 
 class ControlWindow(wx.Frame):
 	def __init__(self,parent,master,**kwargs):
@@ -486,7 +492,7 @@ class ControlWindow(wx.Frame):
 
 		self.master = master
 
-		self.previewcanvas = glc.PreviewCanvas(self,self.master.stimcanvas,size=(400,600))
+		self.previewcanvas = glc.PreviewCanvas(self,self.master.stimcanvas,size=(480,640))
 		self.taskpanel = TaskPanel(self,master)
 		self.statuspanel = StatusPanel(self,master)
 		self.adjustpanel = AdjustPanel(self,master)

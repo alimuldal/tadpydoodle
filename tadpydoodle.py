@@ -139,8 +139,8 @@ class AppThread(multiprocessing.Process):
 				if ext.lower() == '.py':
 					# print os.path.join(relpath,fullname)
 					mod = imp.load_source(fname,os.path.join(relpath,fullname))
-				elif ext.lower() == '.pyc':
-					mod = imp.load_compiled(fname,os.path.join(relpath,fullname))
+				# elif ext.lower() == '.pyc':
+				# 	mod = imp.load_compiled(fname,os.path.join(relpath,fullname))
 				else:
 					continue
 
@@ -149,7 +149,8 @@ class AppThread(multiprocessing.Process):
 					names.append(name)
 					objects.append(obj)
 				del mod
-
+				
+		self.current_task = None
 		self.taskdict = dict(zip(names,objects))
 
 	def onClose(self,event):

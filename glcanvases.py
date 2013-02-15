@@ -31,8 +31,9 @@ class StimCanvas(GLCanvas):
 		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,8,
-				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
-		super(StimCanvas,self).__init__(parent,-1,attribList=attribList)
+				wx.glcanvas.WX_GL_STENCIL_SIZE,8]
+
+		GLCanvas.__init__(self,parent,-1,attribList=attribList)
 
 		self.parent = parent
 		self.master = master
@@ -128,6 +129,7 @@ class StimCanvas(GLCanvas):
 		gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGB32F,xres,yres,0,
 				gl.GL_RGB,gl.GL_FLOAT,None)
 
+
 		# create & bind a framebuffer object
 		self.framebuffer = fbo.glGenFramebuffers(1)
 		fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
@@ -137,7 +139,7 @@ class StimCanvas(GLCanvas):
 		self.depthbuffer = fbo.glGenRenderbuffers(1)
 		fbo.glBindRenderbufferEXT(fbo.GL_RENDERBUFFER,self.depthbuffer)
 		fbo.glRenderbufferStorageEXT(	fbo.GL_RENDERBUFFER,
-						gl.GL_DEPTH_COMPONENT,
+						gl.GL_DEPTH24_STENCIL8,
 						xres,yres)
 
 		# attach the texture to the color component of the framebuffer
@@ -150,14 +152,15 @@ class StimCanvas(GLCanvas):
 
 		# attach the renderbuffer to the depth component of the framebuffer
 		fbo.glFramebufferRenderbuffer(	fbo.GL_FRAMEBUFFER,
-						fbo.GL_DEPTH_ATTACHMENT,
+						fbo.GL_DEPTH_STENCIL_ATTACHMENT,
 						fbo.GL_RENDERBUFFER,
 						self.depthbuffer,
 						)
 
-		# # make sure the FBO is set up correctly
-		# status = fbo.glCheckFramebufferStatusEXT(fbo.GL_FRAMEBUFFER)
-		# assert status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT, status
+		# make sure the FBO is set up correctly
+		status = fbo.glCheckFramebufferStatusEXT(fbo.GL_FRAMEBUFFER)
+		# assert status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
+		print status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
 
 		# switch back to the display manager-provided framebuffer
 		fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
@@ -178,6 +181,7 @@ class StimCanvas(GLCanvas):
 		# only redraw if there is not already a pending draw request!
 		if self.drawqueue.hasRun:
 			self.onDraw()
+			print gl.glGetIntegerv(gl.GL_STENCIL_BITS)
 		pass
 
 	def onDraw(self):
@@ -201,15 +205,15 @@ class StimCanvas(GLCanvas):
 		gl.glViewport(0, 0, xres, yres)
 
 		# set an orthogonal projection - visible region will be from
-		# 0-->size in x and y, and from -100-->100 in z
+		# 0-->size in x and y, and from 0-->255 in z
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
 		# left, right, bottom, top, near, far
-		gl.glOrtho(0,xres,0,yres,-100,100)
+		gl.glOrtho(0,xres,0,yres,-128,128)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		if self.master.current_task:
 			gl.glClearColor(*self.master.current_task.background_color)
@@ -218,11 +222,11 @@ class StimCanvas(GLCanvas):
 
 		gl.glPushMatrix()
 
-		if self.master.show_crosshairs:
+		if self.master.run_task:
 			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos,self.master.c_xpos, -1)
+			gl.glTranslate(self.master.c_ypos, self.master.c_xpos, -1);
 			gl.glScale(*(self.master.c_scale,)*3)
-			gl.glCallList(self.crosshairlist)
+			self.master.current_task.display()
 
 		# we always draw the photodiode, but we change its color
 		# conditionally - when off it will appear black against a white
@@ -237,15 +241,11 @@ class StimCanvas(GLCanvas):
 		gl.glCallList(self.photodiodelist)
 		gl.glColor4f(1.,1.,1.,1.)
 
-		if self.master.run_task:
+		if self.master.show_crosshairs:
 			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos, self.master.c_xpos, -1);
+			gl.glTranslate(self.master.c_ypos,self.master.c_xpos, 0)
 			gl.glScale(*(self.master.c_scale,)*3)
-			
-			# we enable depth testing in case the task requires it
-			gl.glEnable(gl.GL_DEPTH_TEST)
-			self.master.current_task.display()
-			gl.glDisable(gl.GL_DEPTH_TEST)
+			gl.glCallList(self.crosshairlist)
 
 		gl.glPopMatrix()
 
@@ -254,7 +254,8 @@ class StimCanvas(GLCanvas):
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 			fbo.glBlitFramebuffer(	0,0,xres,yres,0,0,xres,yres,
-						gl.GL_COLOR_BUFFER_BIT, gl.GL_NEAREST)
+						gl.GL_COLOR_BUFFER_BIT,
+						gl.GL_NEAREST)
 
 		# swap the front and back buffers, so that the new frame is now
 		# visible. this is the bottleneck where all of the OpenGL calls
@@ -300,8 +301,7 @@ class PreviewCanvas(GLCanvas):
 	def __init__(self,parent,stimcanvas,size=None):
 		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
-				wx.glcanvas.WX_GL_DEPTH_SIZE,8,
-				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
+				wx.glcanvas.WX_GL_DEPTH_SIZE,0]
 
 		if size is None: size = stimcanvas.GetSize()
 
@@ -396,9 +396,6 @@ class PreviewCanvas(GLCanvas):
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
-
-		# clear the buffers
-		# gl.glClear( gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT )
 
 		# bind the master's FBO texture
 		gl.glEnable(gl.GL_TEXTURE_2D)
