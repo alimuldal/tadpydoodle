@@ -411,6 +411,13 @@ class OptionPanel(wx.Panel):
 		self.stimframestyle = self.master.stimframe.GetWindowStyle()
 		self.controlwindowstyle = self.parent.GetWindowStyle()
 
+		# make sure the initial state of the windows is set
+		if self.master.on_top:
+			self.master.stimframe.SetWindowStyle(self.stimframestyle|wx.STAY_ON_TOP)
+			self.parent.SetWindowStyle(self.controlwindowstyle|wx.STAY_ON_TOP)
+		if self.master.fullscreen:
+			self.master.stimframe.ShowFullScreen(True,style=wx.FULLSCREEN_ALL)
+
 		check_statbox = wx.StaticBox(self,wx.VERTICAL,label='Display options')
 
 		attrnames = [	'show_photodiode','show_crosshairs',
@@ -425,37 +432,38 @@ class OptionPanel(wx.Panel):
 			ref = AttributeRef(self.master,attrnames[ii])
 			ctrl = wx.CheckBox(self,-1,label=names[ii])
 			ctrl.ref = ref
-			ctrl.SetValue(ref.get())
 			ctrl.Bind(wx.EVT_CHECKBOX,events[ii])
+			ctrl.SetValue(ref.get())
 			checkboxes.append(ctrl)
 		self.checkboxes = dict(zip(attrnames,checkboxes))
 
 		check_sizer = wx.StaticBoxSizer(check_statbox,wx.VERTICAL)
 		check_sizer.AddMany([(cc,0,wx.EXPAND|wx.ALL,5) for cc in checkboxes])
+
 		self.SetSizerAndFit(check_sizer)
 
-	def onPhoto(self,event):
+	def onPhoto(self,event=None):
 		caller = self.checkboxes['show_photodiode']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
 
-	def onCross(self,event):
+	def onCross(self,event=None):
 		caller = self.checkboxes['show_crosshairs']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
 
-	def onPreview(self,event):
+	def onPreview(self,event=None):
 		caller = self.checkboxes['show_preview']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
 
-	def onFullscreen(self,event):
+	def onFullscreen(self,event=None):
 		caller = self.checkboxes['fullscreen']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
 		self.master.stimframe.ShowFullScreen(caller.ref.get(),style=wx.FULLSCREEN_ALL)
 
-	def onTop(self,event):
+	def onTop(self,event=None):
 		caller = self.checkboxes['on_top']
 		ontop = not caller.ref.get()
 		caller.ref.set(ontop)
@@ -467,7 +475,7 @@ class OptionPanel(wx.Panel):
 			self.master.stimframe.SetWindowStyle(self.stimframestyle)
 			self.parent.SetWindowStyle(self.controlwindowstyle)
 
-	def onDisplayloop(self,event):
+	def onDisplayloop(self,event=None):
 		caller = self.checkboxes['run_loop']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
