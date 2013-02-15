@@ -1,0 +1,19 @@
+syntax: glob
+*.pyc
+*~
+*.swp
+*.png
+*.svg
+*.pdf
+*.x
+*.X
+runs/*
+boy
+*.pickle
+*.hdf5
+*.mat
+*.log
+tmp/*
+
+syntax: regexp
+
