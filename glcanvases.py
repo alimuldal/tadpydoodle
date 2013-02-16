@@ -68,43 +68,57 @@ class StimCanvas(GLCanvas):
 	def makedisplaylists(self):
 		""" Compile display lists for the crosshairs and photodiode """
 
+		# display list for the photodiode
+		#---------------------------------------------------------------
 		photodiodelist = gl.glGenLists(1)
 		gl.glNewList(photodiodelist, gl.GL_COMPILE)
-		gl.glBegin(gl.GL_POLYGON)
-		gl.glVertex3f(-1., 1., 0.)	
-		gl.glVertex3f(1., 1., 0.)
-		gl.glVertex3f(1., -1., 0.)
-		gl.glVertex3f(-1., -1., 0.)
-		gl.glVertex3f(-1., 1., 0.)	
-		gl.glEnd()
-		gl.glEndList()
-		self.photodiodelist = photodiodelist
 
+		gl.glBegin(gl.GL_POLYGON)
+		gl.glVertex2f( -1.0,  1.0 )	
+		gl.glVertex2f(  1.0,  1.0 )
+		gl.glVertex2f(  1.0, -1.0 )
+		gl.glVertex2f( -1.0, -1.0 )
+		gl.glVertex2f( -1.0,  1.0 )	
+		gl.glEnd()
+
+		gl.glEndList()
+		#---------------------------------------------------------------
+
+		# display list for the crosshairs
+		#---------------------------------------------------------------
 		crosshairlist = gl.glGenLists(1)
 		gl.glNewList(crosshairlist, gl.GL_COMPILE)
 
 		gl.glColor4f(1.,0.,0.,1.)
+
+		# the box
 		gl.glBegin(gl.GL_LINE_LOOP)
-		gl.glVertex3f(-1., 1., 0.)	
-		gl.glVertex3f(1., 1., 0.)
-		gl.glVertex3f(1., -1., 0.)
-		gl.glVertex3f(-1., -1., 0.)
-		gl.glVertex3f(-1., 1., 0.)	
+		gl.glVertex2f( -1.0,  1.0 )	
+		gl.glVertex2f(  1.0,  1.0 )
+		gl.glVertex2f(  1.0, -1.0 )
+		gl.glVertex2f( -1.0, -1.0 )
+		gl.glVertex2f( -1.0,  1.0 )	
 		gl.glEnd()
 
+		# the circle
 		radius = 0.5
 		gl.glBegin(gl.GL_LINE_LOOP)
-		for angle in np.arange(0.,2*np.pi,(2*np.pi)/64.):
-			gl.glVertex3f(np.sin(angle) * radius, np.cos(angle) * radius, 0.)
+		for angle in np.linspace(0,2*np.pi,64):
+			gl.glVertex2f( np.sin(angle)*radius, np.cos(angle)*radius )
 		gl.glEnd()
+
+		# the cross
 		gl.glBegin(gl.GL_LINES)
-		gl.glVertex3f(0., 0.3, 0.)	
-		gl.glVertex3f(0., -.3, 0.)
-		gl.glVertex3f(.3, 0., 0.)
-		gl.glVertex3f(-0.3, 0., 0.)
+		gl.glVertex2f( 0.0,  0.3 )	
+		gl.glVertex2f( 0.0, -0.3 )
+		gl.glVertex2f( 0.3,  0.0 )
+		gl.glVertex2f(-0.3,  0.0 )
 		gl.glEnd()
 
 		gl.glEndList()
+		#---------------------------------------------------------------
+
+		self.photodiodelist = photodiodelist
   		self.crosshairlist = crosshairlist
 
   		pass
@@ -112,7 +126,9 @@ class StimCanvas(GLCanvas):
   	def initFBO(self):
   		"""
   		Initialise the framebuffer object. This should happen whenever
-  		the stimulus resolution changes
+  		the stimulus resolution changes, since the size of the
+  		required renderbuffer depends on the pixel size of the viewport
+  		we're rendering.
   		"""
 
   		xres,yres = self.master.x_resolution,self.master.y_resolution
@@ -121,41 +137,57 @@ class StimCanvas(GLCanvas):
 		# whole viewport to this texture
 		self.fbo_texture = gl.glGenTextures(1)
 		gl.glBindTexture(gl.GL_TEXTURE_2D,self.fbo_texture)
+
+		# texture params
 		gl.glTexEnvf( gl.GL_TEXTURE_ENV, gl.GL_TEXTURE_ENV_MODE, gl.GL_MODULATE )
 		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP )
 		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP )
 		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR )
 		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR )
-		gl.glTexImage2D(gl.GL_TEXTURE_2D,0,gl.GL_RGB32F,xres,yres,0,
-				gl.GL_RGB,gl.GL_FLOAT,None)
 
+		# map the texture
+		gl.glTexImage2D(
+			gl.GL_TEXTURE_2D,		# target
+			0,				# mipmap level
+			gl.GL_RGB32F,			# internal format
+			xres,				# width
+			yres,				# height
+			0,				# border
+			gl.GL_RGB,			# input data format
+			gl.GL_FLOAT,			# input data type
+			None				# input data
+			)
 
 		# create & bind a framebuffer object
 		self.framebuffer = fbo.glGenFramebuffers(1)
 		fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
 
-
 		# create & bind renderbuffer object to store depth info
 		self.depthbuffer = fbo.glGenRenderbuffers(1)
 		fbo.glBindRenderbufferEXT(fbo.GL_RENDERBUFFER,self.depthbuffer)
-		fbo.glRenderbufferStorageEXT(	fbo.GL_RENDERBUFFER,
-						gl.GL_DEPTH24_STENCIL8,
-						xres,yres)
+		fbo.glRenderbufferStorageEXT(
+			fbo.GL_RENDERBUFFER,		# target
+			gl.GL_DEPTH24_STENCIL8,		# internal format
+			xres,				# width
+			yres				# height
+			)
 
 		# attach the texture to the color component of the framebuffer
-		fbo.glFramebufferTexture2D(	fbo.GL_FRAMEBUFFER,		# target
-						fbo.GL_COLOR_ATTACHMENT0,	# attachment point
-						gl.GL_TEXTURE_2D,		# texture target
-						self.fbo_texture,	# texture id
-						0			# mipmap level
-						)
+		fbo.glFramebufferTexture2D(	
+			fbo.GL_FRAMEBUFFER,		# target
+			fbo.GL_COLOR_ATTACHMENT0,	# attachment
+			gl.GL_TEXTURE_2D,		# texure target
+			self.fbo_texture,		# texture ID
+			0				# mipmap level
+			)
 
 		# attach the renderbuffer to the depth component of the framebuffer
-		fbo.glFramebufferRenderbuffer(	fbo.GL_FRAMEBUFFER,
-						fbo.GL_DEPTH_STENCIL_ATTACHMENT,
-						fbo.GL_RENDERBUFFER,
-						self.depthbuffer,
-						)
+		fbo.glFramebufferRenderbuffer(
+			fbo.GL_FRAMEBUFFER,		# target
+			fbo.GL_DEPTH_STENCIL_ATTACHMENT,# attachment
+			fbo.GL_RENDERBUFFER,		# renderbuffer target
+			self.depthbuffer 		# renderbuffer ID
+			)
 
 		# make sure the FBO is set up correctly
 		status = fbo.glCheckFramebufferStatusEXT(fbo.GL_FRAMEBUFFER)
@@ -190,70 +222,81 @@ class StimCanvas(GLCanvas):
 
 		self.SetCurrent()
 
+		# if we're previewing, we will draw to the offscreen framebuffer
 		if self.master.show_preview:
-			# if we're previewing, draw to the offscreen framebuffer
 			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
 		# else:
 		# 	# otherwise, just draw to the normal back buffer
 		# 	fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
 
-		xres,yres = self.master.x_resolution,self.master.y_resolution
-
 		# the viewport is the same size as the stimulus resolution
+		xres,yres = self.master.x_resolution,self.master.y_resolution
 		gl.glViewport(0, 0, xres, yres)
 
 		# set an orthogonal projection - visible region will be from
-		# 0-->size in x and y, and from 0-->255 in z
+		# 0-->size in x and y, and from -128-->128 in z
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
-		# left, right, bottom, top, near, far
 		gl.glOrtho(0,xres,0,yres,-128,128)
+		# (left, right, bottom, top, near, far)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
 
+		# we set the clear color according to the background color of
+		# the current task (if there is one)
 		if self.master.current_task:
 			gl.glClearColor(*self.master.current_task.background_color)
 		else:
-			gl.glClearColor(0., 0., 0., 0.)
+			gl.glClearColor(0., 0., 0., 1.)
 
+		# clear the color, depth and stencil buffers
 		gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
+		#---------------------------------------------------------------
+		# NB - we need to draw from back to front in order for depth
+		# testing to work correctly!
+		#---------------------------------------------------------------
+
+		# go to the stimulus area, call display() to show the current
+		# stimulus state
 		if self.master.run_task:
 			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos, self.master.c_xpos, -1);
+			gl.glTranslate(self.master.c_ypos, self.master.c_xpos, 0);
 			gl.glScale(*(self.master.c_scale,)*3)
 			self.master.current_task.display()
 
-		# we always draw the photodiode, but we change its color
+		# we always draw the photodiode trigger but we change its color
 		# conditionally - when off it will appear black against a white
 		# background
 		gl.glLoadIdentity()
-		gl.glTranslate(self.master.p_ypos,self.master.p_xpos, -1)
+		gl.glTranslate(self.master.p_ypos,self.master.p_xpos, -127)
 		gl.glScale(*(self.master.p_scale,)*3)
 		if (self.master.show_photodiode):
 			gl.glColor4f(1.,1.,1.,1.)
 		else:
 			gl.glColor4f(0.,0.,0.,1.)
 		gl.glCallList(self.photodiodelist)
-		gl.glColor4f(1.,1.,1.,1.)
 
+		# draw the crosshairs
 		if self.master.show_crosshairs:
 			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos,self.master.c_xpos, 0)
+			gl.glTranslate(self.master.c_ypos,self.master.c_xpos, -128)
 			gl.glScale(*(self.master.c_scale,)*3)
 			gl.glCallList(self.crosshairlist)
 
+		# if we're rendering offscreen we now need to blit the contents
+		# of the FBO to the back buffer so that they will be visible
+		# when we call SwapBuffers()
 		if self.master.show_preview:
-			# now blit the contents of the FBO to the back buffer
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 			fbo.glBlitFramebuffer(	0,0,xres,yres,0,0,xres,yres,
 						gl.GL_COLOR_BUFFER_BIT,
 						gl.GL_NEAREST)
 
-		# swap the front and back buffers, so that the new frame is now
-		# visible
+		# swap the front and back buffers so that the new frame is now
+		# visible in the canvas
 		self.SwapBuffers()
 
 		# if we're running the display loop, queue another draw call
@@ -261,20 +304,18 @@ class StimCanvas(GLCanvas):
 			self.drawcount += 1
 			self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
 
-		# keep a running minimum of the framerate
+		# keep a running minimum of the framerate and update the task
+		# status panel
 		now = time.time()
 		dt = now - self.currtime
 		if dt > self.slowestframe: self.slowestframe = dt
 		self.currtime = now
-
-		# update the task status panel
 		self.master.controlwindow.statuspanel.onUpdate()
-
 		if not self.drawcount % self.master.framerate_window:
 			self.drawcount = 0
 			self.slowestframe = -1
 
-		# only we draw every nth frame to the preview canvas to reduce
+		# we only draw every nth frame to the preview canvas to reduce
 		# copying overhead
 		if self.master.show_preview:
 			if not self.drawcount % self.master.preview_frequency:
@@ -292,6 +333,9 @@ class PreviewCanvas(GLCanvas):
 	"""
 
 	def __init__(self,parent,stimcanvas,size=None):
+
+		# we don't need a depth or stencil buffer, since this is all
+		# taken care of by the offscreen framebuffer
 		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
@@ -338,7 +382,9 @@ class PreviewCanvas(GLCanvas):
 	def postinit(self):
 		""" called in onPaint if self.done_postinit == False """
 
-		# pre-compile the texture display list
+		# display list for the texture that we will use to display the
+		# contents of the offscreen
+		# --------------------------------------------------------------
 		self.texlist = gl.glGenLists(1)
 		gl.glNewList(self.texlist, gl.GL_COMPILE)
 
@@ -347,9 +393,9 @@ class PreviewCanvas(GLCanvas):
 		# rotate the texture 90o counterclockwise
 		gl.glMatrixMode(gl.GL_TEXTURE);
 		gl.glLoadIdentity();
-		gl.glTranslatef( 0.5, 0.5, 0.0 );
-		gl.glRotatef(	 -90, 0.0, 0.0, 1.0);
-		gl.glTranslatef(-0.5,-0.5, 0.0 );
+		gl.glTranslatef( 0.5, 0.5, 0.0     )
+		gl.glRotatef(	 -90, 0.0, 0.0, 1.0)
+		gl.glTranslatef(-0.5,-0.5, 0.0     )
 
 		# draw the texture
 		gl.glColor4f(1.,1.,1.,1.)
@@ -361,16 +407,16 @@ class PreviewCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glDisable(gl.GL_TEXTURE_2D)
-		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
 
 		gl.glEndList()
+		# --------------------------------------------------------------
 
 		pass
 
 	def onPaint(self,event=None):
 
 		# we can only draw after the master canvas has already done so,
-		# otherwise we won't have an OpenGL context
+		# otherwise we won't have an OpenGL context to draw into
 		if self.stimcanvas.done_postinit:
 			self.currsize = self.GetSize()
 			self.onDraw()
@@ -389,13 +435,15 @@ class PreviewCanvas(GLCanvas):
 
 		gl.glViewport(0,0,*self.currsize)
 
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+		# set up the projection
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
 		gl.glOrtho(0,1,0,1,0,1)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		# bind the master's FBO texture
 		gl.glBindTexture(gl.GL_TEXTURE_2D,self.stimcanvas.fbo_texture)
@@ -414,31 +462,30 @@ class PreviewCanvas(GLCanvas):
 		elif wx.GetKeyState(wx.WXK_F2):
 			mode = 2
 		else:
-			mode = 0
+			return
 
-		if mode:
-			# map coordinates on the preview window to coordinates
-			# in display space
-			preview_x,preview_y = event.GetX(),event.GetY()
+		# map coordinates on the preview window to coordinates
+		# in display space
+		preview_x,preview_y = event.GetX(),event.GetY()
 
-			p_w,p_h = self.currsize
-			d_h,d_w = self.master.x_resolution,self.master.y_resolution
+		p_w,p_h = self.currsize
+		d_h,d_w = self.master.x_resolution,self.master.y_resolution
 
-			display_x = (d_w)*(1. - float(preview_x)/p_w)
-			display_y = (d_h)*(1. - float(preview_y)/p_h)
+		display_x = (d_w)*(1. - float(preview_x)/p_w)
+		display_y = (d_h)*(1. - float(preview_y)/p_h)
 
-			# aaaargh hellish callbacks!
-			if mode == 1:
-				controls = self.master.controlwindow.adjustpanel.p_textctls
-				prefix = 'p_'
-			else:
-				controls = self.master.controlwindow.adjustpanel.c_textctls
-				prefix = 'c_'
+		# aaaargh hellish callbacks!
+		if mode == 1:
+			controls = self.master.controlwindow.adjustpanel.p_textctls
+			prefix = 'p_'
+		else:
+			controls = self.master.controlwindow.adjustpanel.c_textctls
+			prefix = 'c_'
 
-			controls[prefix+'xpos'].ref.set(display_x)
-			controls[prefix+'xpos'].SetValue(str(display_x))
-			controls[prefix+'ypos'].ref.set(display_y)
-			controls[prefix+'ypos'].SetValue(str(display_y))
+		controls[prefix+'xpos'].ref.set(display_x)
+		controls[prefix+'xpos'].SetValue(str(display_x))
+		controls[prefix+'ypos'].ref.set(display_y)
+		controls[prefix+'ypos'].SetValue(str(display_y))
 
 	def onWheel(self,event):
 
