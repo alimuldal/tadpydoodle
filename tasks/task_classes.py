@@ -188,12 +188,12 @@ class DotFlashTask(Task):
 		pd.update({'initblanktime':self.initblanktime})
 		pd.update({'finalblanktime':self.finalblanktime})
 		pd.update({'ontimes':self.ontimes})
+		pd.update({'offtimes':self.offtimes})
 		pd.update({'stimtimes':self.theoreticalstimtimes})
 		pd.update({'finishtime':self.finishtime})
 		pd.update({'scan_hz':self.scan_hz})
 
 		# stim specific stuff
-		pd.update({'offtimes':self.offtimes})
 		pd.update({'radius':self.radius})
 		pd.update({'dot_color':self.dot_color})
 		pd.update({'permutation':self.permutation})
@@ -232,27 +232,13 @@ class DriftingBarTask(Task):
 		self.stopx = np.array([np.cos(np.deg2rad(aa)+np.pi) for aa in self.angle])
 		self.stopy = np.array([np.sin(np.deg2rad(aa)+np.pi) for aa in self.angle])
 
-		# display list for the bar
-		w,h = self.bar_width,self.bar_height
-		bar = gl.glGenLists(1)
-		gl.glNewList(bar,gl.GL_COMPILE)
-
-		gl.glColor4f(*self.bar_color)
-		gl.glBegin(gl.GL_QUADS)
-		gl.glVertex3f(-w/2., h/2, 0.)
-		gl.glVertex3f( w/2., h/2, 0.)
-		gl.glVertex3f( w/2.,-h/2, 0.)
-		gl.glVertex3f(-w/2.,-h/2, 0.)
-		gl.glEnd()
-
-		gl.glEndList()
-		self.bar = bar
-		self.drawn_stencil = False
-
 		# display list for the circular aperture stencil
+		#---------------------------------------------------------------
 		radius = self.aperture_radius
 		aperture = gl.glGenLists(1)
 		gl.glNewList(aperture,gl.GL_COMPILE)
+
+		gl.glEnable(gl.GL_STENCIL_TEST)
 
 		# set up the clipping stencil buffer
 		gl.glClearStencil(0)
@@ -281,7 +267,29 @@ class DriftingBarTask(Task):
 		gl.glStencilOp(gl.GL_KEEP,gl.GL_KEEP,gl.GL_KEEP)
 
 		gl.glEndList()
+		#---------------------------------------------------------------
+
+		# display list for the bar
+		#---------------------------------------------------------------
+		w,h = self.bar_width,self.bar_height
+		bar = gl.glGenLists(1)
+		gl.glNewList(bar,gl.GL_COMPILE)
+
+		gl.glColor4f(*self.bar_color)
+		gl.glBegin(gl.GL_QUADS)
+		gl.glVertex3f(-w/2., h/2, 0.)
+		gl.glVertex3f( w/2., h/2, 0.)
+		gl.glVertex3f( w/2.,-h/2, 0.)
+		gl.glVertex3f(-w/2.,-h/2, 0.)
+		gl.glEnd()
+
+		# disable stencil testing
+		gl.glDisable(gl.GL_STENCIL_TEST)
+		gl.glEndList()
+		#---------------------------------------------------------------
+
 		self.aperture = aperture
+		self.bar = bar
 
 	def buildparamsdict(self):
 
@@ -293,20 +301,18 @@ class DriftingBarTask(Task):
 		pd.update({'initblanktime':self.initblanktime})
 		pd.update({'finalblanktime':self.finalblanktime})
 		pd.update({'ontimes':self.ontimes})
+		pd.update({'offtimes':self.offtimes})
 		pd.update({'stimtimes':self.theoreticalstimtimes})
 		pd.update({'finishtime':self.finishtime})
 		pd.update({'scan_hz':self.scan_hz})
 
 		# stim specific stuff
-		pd.update({'offtimes':self.offtimes})
 		pd.update({'aperture_radius':self.aperture_radius})
 		pd.update({'aperture_vertices':self.aperture_vertices})
 		pd.update({'bar_color':self.bar_color})
 		pd.update({'bar_width':self.bar_width})
 		pd.update({'bar_height':self.bar_width})
 		pd.update({'permutation':self.permutation})
-
-		# backwards-compatible
 		pd.update({'angle':self.angle})
 		pd.update({'startx':self.startx})
 		pd.update({'starty':self.starty})
@@ -325,8 +331,6 @@ class DriftingBarTask(Task):
 		x = self.startx[self.stimidx] + frac*(self.stopx[self.stimidx]-self.startx[self.stimidx])
 		y = self.starty[self.stimidx] + frac*(self.stopy[self.stimidx]-self.starty[self.stimidx])
 
-		gl.glEnable(gl.GL_STENCIL_TEST)
-
 		# draw the aperture to the stencil buffer
 		gl.glCallList(self.aperture)
 
@@ -339,8 +343,161 @@ class DriftingBarTask(Task):
 		# draw the bar
 		gl.glCallList(self.bar)
 
+		pass
+
+class DriftingGratingTask(Task):
+
+	subclass = 'drifting_grating'
+
+	def buildstim(self):
+
+		# orientations copied from drifting bar stimuli
+		orientation = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
+
+		# do the shuffling
+		orientation = orientation[self.permutation]
+		self.orientation = orientation
+
+		phaseangle = np.linspace(0,2*np.pi*self.spatial_freqency,self.grating_nsamples)
+
+		# the texture values should be float32, range [0.,1.]
+		sinusoid = self.grating_amplitude*np.float32((np.sin(phaseangle)+1.)/2.)
+
+		# build the texture
+		self.texture = gl.glGenTextures(1)
+		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
+		gl.glTexEnvf( gl.GL_TEXTURE_ENV, gl.GL_TEXTURE_ENV_MODE, gl.GL_MODULATE )
+		gl.glTexParameterf( gl.GL_TEXTURE_1D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT )
+		gl.glTexParameterf( gl.GL_TEXTURE_1D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT )
+		gl.glTexParameterf( gl.GL_TEXTURE_1D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR )
+		gl.glTexParameterf( gl.GL_TEXTURE_1D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR )
+
+		gl.glTexImage1D(gl.GL_TEXTURE_1D,0,gl.GL_LUMINANCE16,self.grating_nsamples,
+				0,gl.GL_LUMINANCE,gl.GL_FLOAT,sinusoid)
+
+		# display list for the circular aperture stencil
+		# --------------------------------------------------------------
+		radius = self.aperture_radius
+		aperture = gl.glGenLists(1)
+		gl.glNewList(aperture,gl.GL_COMPILE)
+
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glEnable(gl.GL_STENCIL_TEST)
+
+		# set up the clipping stencil buffer
+		gl.glClearStencil(0)
+		gl.glClear(gl.GL_STENCIL_BUFFER_BIT)
+
+		# don't write to pixel RGBA values while making the stencil
+		gl.glColorMask(0,0,0,0)
+		gl.glDisable(gl.GL_DEPTH_TEST)
+
+		# set the stencil buffer to 1 wherever the aperture gets drawn
+		# (regardless of what the previous buffer value was)
+		gl.glStencilFunc(gl.GL_ALWAYS,1,1)
+		gl.glStencilOp(gl.GL_REPLACE,gl.GL_REPLACE,gl.GL_REPLACE)
+
+		gl.glBegin(gl.GL_POLYGON)
+		for angle in np.linspace(0.,2*np.pi,self.aperture_vertices,endpoint=False):
+			gl.glVertex3f(np.sin(angle)*radius,np.cos(angle)*radius,0.)
+		gl.glEnd()
+
+		# re-enable writing to RGBA values
+		gl.glColorMask(1,1,1,1)
+
+		# we will draw our current stimulus only where the stencil
+		# buffer is equal to 1
+		gl.glStencilFunc(gl.GL_EQUAL,1,1)
+		gl.glStencilOp(gl.GL_KEEP,gl.GL_KEEP,gl.GL_KEEP)
+
+		gl.glEndList()
+		# --------------------------------------------------------------
+		self.aperture = aperture
+
+		# display list for the texture
+		# --------------------------------------------------------------
+		self.texlist = gl.glGenLists(1)
+		gl.glNewList(self.texlist, gl.GL_COMPILE)
+
+		# we use blending so that the opacity of the grating varies
+		# sinusoidally
+		gl.glEnable(gl.GL_BLEND)
+		gl.glBlendFunc(gl.GL_SRC_ALPHA,gl.GL_DST_ALPHA)
+
+		gl.glEnable(gl.GL_TEXTURE_1D)
+
+		gl.glColor4f(*self.grating_color)
+		gl.glBegin( gl.GL_QUADS )
+		gl.glTexCoord2f( 0, 1 );	gl.glVertex2f( -1,  1 )
+		gl.glTexCoord2f( 0, 0 );	gl.glVertex2f( -1, -1 )
+		gl.glTexCoord2f( 1, 0 );	gl.glVertex2f(  1, -1 )
+		gl.glTexCoord2f( 1, 1 );	gl.glVertex2f(  1,  1 )
+		gl.glEnd()
+
+		gl.glDisable(gl.GL_TEXTURE_1D)
+		gl.glDisable(gl.GL_BLEND)
+		
 		# disable stencil testing
 		gl.glDisable(gl.GL_STENCIL_TEST)
+
+		gl.glEndList()
+		# --------------------------------------------------------------
+
+		self.phase = 0
+
+		pass
+
+	def buildparamsdict(self):
+
+		pd = {}
+		
+		# do the standard stuff first:
+		pd.update({'taskname':self.taskname})
+		pd.update({'subclass':self.subclass})
+		pd.update({'initblanktime':self.initblanktime})
+		pd.update({'finalblanktime':self.finalblanktime})
+		pd.update({'ontimes':self.ontimes})
+		pd.update({'offtimes':self.offtimes})
+		pd.update({'stimtimes':self.theoreticalstimtimes})
+		pd.update({'finishtime':self.finishtime})
+		pd.update({'scan_hz':self.scan_hz})
+
+		# stim specific stuff
+		pd.update({'aperture_radius':self.aperture_radius})
+		pd.update({'aperture_vertices':self.aperture_vertices})
+		pd.update({'grating_nsamples':self.grating_nsamples})
+		pd.update({'grating_color':self.grating_color})
+		pd.update({'grating_amplitude':self.grating_amplitude})
+		pd.update({'orientation':self.orientation})
+		pd.update({'spatial_freqency':self.spatial_freqency})
+		pd.update({'temporal_freqency':self.temporal_freqency})
+		pd.update({'permutation':self.permutation})
+
+		self.paramsdict = pd
+
+		pass
+
+	def drawstim(self):
+
+		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
+		gl.glMatrixMode(gl.GL_TEXTURE)
+		gl.glLoadIdentity()
+
+		# translate by the current phase
+		gl.glTranslate(self.phase,0,0)
+
+		# rotate by the current orientation
+		gl.glRotatef(self.orientation[self.stimidx],0,0,1)
+
+		# draw the aperture to the stencil buffer
+		gl.glCallList(self.aperture)
+
+		# draw the texture
+		gl.glCallList(self.texlist)
+
+		# update the phase
+		on_dt = self.dt - (self.initblanktime + self.ontimes[self.stimidx])
+		self.phase = on_dt*self.temporal_freqency
 
 		pass
 
@@ -412,11 +569,13 @@ class dotflash2_2hz(dotflash2):
 	taskname = 'dotflash2_2hz'
 	scan_hz = 2.
 
-class dotflash1_inverted(dotflash1):
+class inverted_dotflash1(dotflash1):
+	taskname = 'inverted_dotflash1'
 	background_color = (1.,1.,1.,1.)
 	dot_color = (0.,0.,0.,1.)
 
-class dotflash2_inverted(dotflash2):
+class  inverted_dotflash2(dotflash2):
+	taskname = 'inverted_dotflash2'
 	background_color = (1.,1.,1.,1.)
 	dot_color = (0.,0.,0.,1.)
 
@@ -454,5 +613,42 @@ class bars1(DriftingBarTask):
 class bars2(bars1):
 
 	taskname = 'bars2'
-
 	permutation = bars1.fullpermutation[bars1.nstim:]
+
+class gratings1(DriftingGratingTask):
+
+	taskname = 'gratings1'
+
+	# stimulus-specific parameters
+	aperture_radius = 1.
+	aperture_vertices = 256
+	grating_color = (1.,1.,1.,1.)
+	grating_amplitude = 1.
+	grating_nsamples = 1000
+	spatial_freqency = 5.
+	temporal_freqency = 0.5
+
+	# stimulus timing
+	initblanktime = 2.
+	finalblanktime = 10.
+	interval = 8
+	on_duration = 1.
+
+	# photodiode triggering parameters
+	scan_hz = 5.
+	photodiodeontime = 0.075
+
+	#-----------------------------------------------------------------------
+	# 36-long permutation when seed == 0, as in original bars1.py
+	fullpermutation = [
+	31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5, 
+	17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0 ]
+	#-----------------------------------------------------------------------
+
+	nstim = 18
+	permutation = fullpermutation[:nstim]
+
+class gratings2(gratings1):
+
+	taskname = 'gratings2'
+	permutation = gratings1.fullpermutation[gratings1.nstim:]

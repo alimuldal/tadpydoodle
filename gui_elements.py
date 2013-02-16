@@ -3,7 +3,7 @@ import glcanvases as glc; reload(glc)
 
 def seconds2human(secs):
 	mins, secs = divmod(secs, 60)
-	return '%02d:%02.2f' % (mins, secs)
+	return '%02d:%05.2f' % (mins, secs)
 
 class AttributeRef(object):
 	def __init__(self,masterobj,attrname):
@@ -46,7 +46,9 @@ class TaskPanel(wx.Panel):
 		self.reloadbutton = reloadbutton
 
 		ref = AttributeRef(self.master,'current_task')
-		taskmenu = wx.ComboBox(self,-1,value='- Select a task -',choices=taskdict.keys()[::-1])
+		choicelist = taskdict.keys()
+		choicelist.sort()
+		taskmenu = wx.ComboBox(self,-1,value='- Select a task -',choices=choicelist)
 		taskmenu.ref = ref
 		taskmenu.Bind(wx.EVT_COMBOBOX,self.onChooseTask)
 		self.taskmenu = taskmenu
@@ -112,12 +114,12 @@ class StatusPanel(wx.Panel):
 
 		statbox = wx.StaticBox(self,wx.HORIZONTAL,label='Task status')
 		self.progressbar = wx.Gauge(self,-1,range=100)
-		timelabel = wx.StaticText(self,-1,'Remaining:',size=(70,-1),style=wx.ALIGN_RIGHT)
-		self.time = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
-		framelabel = wx.StaticText(self,-1,'Scan:',size=(70,-1),style=wx.ALIGN_RIGHT)
-		self.frame = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
-		fpslabel = wx.StaticText(self,-1,'Min FPS:',size=(70,-1),style=wx.ALIGN_RIGHT)
-		self.fps = wx.StaticText(self,-1,'',size=(70,-1),style=wx.ALIGN_LEFT)
+		timelabel = wx.StaticText(self,-1,'Remaining:',size=(80,-1),style=wx.ALIGN_RIGHT)
+		self.time = wx.StaticText(self,-1,'',size=(60,-1),style=wx.ALIGN_LEFT)
+		framelabel = wx.StaticText(self,-1,'Scan:',size=(80,-1),style=wx.ALIGN_RIGHT)
+		self.frame = wx.StaticText(self,-1,'',size=(60,-1),style=wx.ALIGN_LEFT)
+		fpslabel = wx.StaticText(self,-1,'Min FPS:',size=(80,-1),style=wx.ALIGN_RIGHT)
+		self.fps = wx.StaticText(self,-1,'',size=(60,-1),style=wx.ALIGN_LEFT)
 
 		txth1 = wx.BoxSizer(wx.HORIZONTAL)
 		txth1.Add(timelabel,0,wx.EXPAND|wx.RIGHT,border=5)
@@ -158,8 +160,8 @@ class StatusPanel(wx.Panel):
 		task = self.master.current_task
 		if task:
 			frame,time = task.currentframe,task.dt
-			self.progressbar.SetValue(100*float(frame)/self.totalframes)
-			self.frame.SetLabel("%i/%i" %(frame,self.totalframes))
+			self.progressbar.SetValue(100*float(frame+1)/self.totalframes)
+			self.frame.SetLabel("%i/%i" %(frame+1,self.totalframes))
 			self.time.SetLabel(seconds2human(self.finishtime - time))
 
 class AdjustPanel(wx.Panel):

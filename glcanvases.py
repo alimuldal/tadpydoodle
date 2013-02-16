@@ -5,7 +5,7 @@ OpenGL.ERROR_CHECKING = False
 OpenGL.ERROR_LOGGING = False
 
 # test for bottlenecks
-OpenGL.ERROR_ON_COPY = False
+OpenGL.ERROR_ON_COPY = True
 
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
@@ -159,8 +159,7 @@ class StimCanvas(GLCanvas):
 
 		# make sure the FBO is set up correctly
 		status = fbo.glCheckFramebufferStatusEXT(fbo.GL_FRAMEBUFFER)
-		# assert status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
-		print status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
+		assert status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
 
 		# switch back to the display manager-provided framebuffer
 		fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
@@ -181,7 +180,6 @@ class StimCanvas(GLCanvas):
 		# only redraw if there is not already a pending draw request!
 		if self.drawqueue.hasRun:
 			self.onDraw()
-			print gl.glGetIntegerv(gl.GL_STENCIL_BITS)
 		pass
 
 	def onDraw(self):
@@ -195,9 +193,9 @@ class StimCanvas(GLCanvas):
 		if self.master.show_preview:
 			# if we're previewing, draw to the offscreen framebuffer
 			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
-		else:
-			# otherwise, just draw to the normal back buffer
-			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
+		# else:
+		# 	# otherwise, just draw to the normal back buffer
+		# 	fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
 
 		xres,yres = self.master.x_resolution,self.master.y_resolution
 
@@ -213,14 +211,13 @@ class StimCanvas(GLCanvas):
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		if self.master.current_task:
 			gl.glClearColor(*self.master.current_task.background_color)
 		else:
 			gl.glClearColor(0., 0., 0., 0.)
 
-		gl.glPushMatrix()
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
 		if self.master.run_task:
 			gl.glLoadIdentity()
@@ -247,8 +244,6 @@ class StimCanvas(GLCanvas):
 			gl.glScale(*(self.master.c_scale,)*3)
 			gl.glCallList(self.crosshairlist)
 
-		gl.glPopMatrix()
-
 		if self.master.show_preview:
 			# now blit the contents of the FBO to the back buffer
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
@@ -258,8 +253,7 @@ class StimCanvas(GLCanvas):
 						gl.GL_NEAREST)
 
 		# swap the front and back buffers, so that the new frame is now
-		# visible. this is the bottleneck where all of the OpenGL calls
-		# actually execute
+		# visible
 		self.SwapBuffers()
 
 		# if we're running the display loop, queue another draw call
@@ -270,22 +264,21 @@ class StimCanvas(GLCanvas):
 		# keep a running minimum of the framerate
 		now = time.time()
 		dt = now - self.currtime
-		if dt > self.slowestframe:
-			self.slowestframe = dt
+		if dt > self.slowestframe: self.slowestframe = dt
 		self.currtime = now
+
+		# update the task status panel
+		self.master.controlwindow.statuspanel.onUpdate()
 
 		if not self.drawcount % self.master.framerate_window:
 			self.drawcount = 0
 			self.slowestframe = -1
 
-		# we draw every nth frame to the preview canvas to avoid
-		# unncecessary overhead
-		if not self.drawcount % self.master.preview_frequency:
-			if self.master.show_preview:
+		# only we draw every nth frame to the preview canvas to reduce
+		# copying overhead
+		if self.master.show_preview:
+			if not self.drawcount % self.master.preview_frequency:
 				[slave.onDraw() for slave in self.slaves]
-
-		# update the task status panel
-		self.master.controlwindow.statuspanel.onUpdate()
 
 
 class PreviewCanvas(GLCanvas):
@@ -301,7 +294,8 @@ class PreviewCanvas(GLCanvas):
 	def __init__(self,parent,stimcanvas,size=None):
 		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
-				wx.glcanvas.WX_GL_DEPTH_SIZE,0]
+				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
+				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
 
 		if size is None: size = stimcanvas.GetSize()
 
@@ -310,14 +304,13 @@ class PreviewCanvas(GLCanvas):
 
 		# this is a funny class constructor, not a class itself...
 		canvas = GLCanvasWithContext(parent,shared=self.context,size=size,attribList=attribList)
-
 		# ...so we do this magic so that canvas is properly instantiated
 		self.PostCreate(canvas)
 
 		self.parent = parent
 		self.stimcanvas = stimcanvas
 
-		# this is crappy nomenclature - 'master' here refers to the
+		# this is just poor nomenclature - 'master' here refers to the
 		# thread, not the other canvas
 		self.master = stimcanvas.master
 
@@ -349,12 +342,14 @@ class PreviewCanvas(GLCanvas):
 		self.texlist = gl.glGenLists(1)
 		gl.glNewList(self.texlist, gl.GL_COMPILE)
 
+		gl.glEnable(gl.GL_TEXTURE_2D)
+
 		# rotate the texture 90o counterclockwise
 		gl.glMatrixMode(gl.GL_TEXTURE);
 		gl.glLoadIdentity();
-		gl.glTranslatef(0.5,0.5,0.0);
-		gl.glRotatef(-90,0.0,0.0,1.0);
-		gl.glTranslatef(-0.5,-0.5,0.0);
+		gl.glTranslatef( 0.5, 0.5, 0.0 );
+		gl.glRotatef(	 -90, 0.0, 0.0, 1.0);
+		gl.glTranslatef(-0.5,-0.5, 0.0 );
 
 		# draw the texture
 		gl.glColor4f(1.,1.,1.,1.)
@@ -364,6 +359,10 @@ class PreviewCanvas(GLCanvas):
 		gl.glTexCoord2f( 1, 0 );	gl.glVertex2f( 1, 0 )
 		gl.glTexCoord2f( 1, 1 );	gl.glVertex2f( 1, 1 )
 		gl.glEnd()
+
+		gl.glDisable(gl.GL_TEXTURE_2D)
+		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
+
 		gl.glEndList()
 
 		pass
@@ -396,16 +395,13 @@ class PreviewCanvas(GLCanvas):
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		# bind the master's FBO texture
-		gl.glEnable(gl.GL_TEXTURE_2D)
 		gl.glBindTexture(gl.GL_TEXTURE_2D,self.stimcanvas.fbo_texture)
 
 		# call the display list to draw the texture
 		gl.glCallList(self.texlist)
-
-		gl.glDisable(gl.GL_TEXTURE_2D)
-		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
 
 		# swap buffers, show the updated texture in this canvas
 		self.SwapBuffers()

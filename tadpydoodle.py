@@ -2,6 +2,7 @@ import wx
 import multiprocessing
 from ConfigParser import SafeConfigParser
 import os,copy,imp,inspect
+# import warnings
 
 import glcanvases as glc; reload(glc)
 import gui_elements as gui; reload(gui)
@@ -126,10 +127,10 @@ class AppThread(multiprocessing.Process):
 
 	def loadTasks(self,event=None):
 		"""
-		Recursively load all tasks in 'self.taskdir' and its
-		subdirectories. The tasks can be defined in any raw or compiled
-		source file, but each must have the attribute '.taskname' in
-		order to be recognised.
+		Recursively compile and  load all tasks in 'self.taskdir' and
+		its subdirectories. Tasks may be defined in any source file, but
+		each must have the '.taskname' attribute in order to be
+		recognised. Duplicate tasknames are skipped with a warning.
 		"""
 		names = []
 		objects = []
@@ -146,8 +147,12 @@ class AppThread(multiprocessing.Process):
 
 				def istask(obj): return hasattr(obj,'taskname')
 				for name,obj in inspect.getmembers(mod,predicate=istask):
-					names.append(name)
-					objects.append(obj)
+
+					if obj.taskname in names:
+						print 'Ignoring duplicate of task "%s" in %s' %(obj.taskname,fullname)
+					else:
+						names.append(obj.taskname)
+						objects.append(obj)
 				del mod
 				
 		self.current_task = None
