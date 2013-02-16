@@ -479,6 +479,10 @@ class DriftingGratingTask(Task):
 
 	def drawstim(self):
 
+		# update the current phase angle
+		on_dt = self.dt - (self.initblanktime + self.ontimes[self.stimidx])
+		self.phase = on_dt*self.temporal_freqency
+
 		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
 		gl.glMatrixMode(gl.GL_TEXTURE)
 		gl.glLoadIdentity()
@@ -494,10 +498,6 @@ class DriftingGratingTask(Task):
 
 		# draw the texture
 		gl.glCallList(self.texlist)
-
-		# update the phase
-		on_dt = self.dt - (self.initblanktime + self.ontimes[self.stimidx])
-		self.phase = on_dt*self.temporal_freqency
 
 		pass
 
