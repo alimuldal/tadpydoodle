@@ -55,21 +55,24 @@ class Task(object):
 		self.finishtime = 	  self.initblanktime \
 					+ self.finalblanktime \
 					+ self.ontimes[-1] 
-		self.actualstimtimes = -1.*np.ones(self.nstim)
-		self.stimflags = np.zeros(self.nstim)
-		self.finished = False
-		self.dt = -1.
-
 		# theoretical scan times
 		self.frametimes = np.arange(0.,self.finishtime,1./self.scan_hz)
 		self.nframes = self.frametimes.size
+
+
+		self.actualstimtimes = -1.*np.ones(self.nstim)
+		self.finished = False
+		self.dt = -1.
 		self.currentframe = 0
+		self.currentstim = -1
+		self.on_flag = False
+		self.off_flag = False
 		pass
 
 
 	def display(self):
 		"""
-		draw the current frame to the glcanvas
+		draw the current stimulus state to the glcanvas
 		"""
 
 		# we haven't started yet
@@ -78,58 +81,56 @@ class Task(object):
 
 		# we've started
 		else:
+			# time since we started
 			dt = time.time() - self.starttime
 
-			if self.currentframe < self.nframes -1:
+			# if we haven't displayed all of the frames yet...
+			if self.currentframe < (self.nframes -1):
+				# ...and if it's after the start time of the next frame...
 				if dt > self.frametimes[self.currentframe+1]:
+					# ...increment the current frame
 					self.currentframe += 1
 
+			# if it's before the end of the photodiode on period,
+			# set the photodiode trigger on
 			self.canvas.master.show_photodiode = (
-				(dt > self.frametimes[self.currentframe]) and \
-				(dt < self.frametimes[self.currentframe] + self.photodiodeontime)
-			)
+				dt < (self.frametimes[self.currentframe] + self.photodiodeontime)
+				)
 	
 			timeafterinitblank = dt - self.initblanktime
 
-			# check if we're in init blank
-			if timeafterinitblank >= 0.:
+			# check if we're still in the initial blank period
+			if timeafterinitblank > 0.:
 
-				stimidx = np.where(self.ontimes < timeafterinitblank)[0]
+				# if we haven't displayed all of the stimuli yet...
+				if self.currentstim < (self.nstim -1):
+					# ...and if it's after the start time of the next stimulus...
+					if timeafterinitblank > self.ontimes[self.currentstim+1]:
+						# ...increment the current stimulus
+						self.currentstim += 1
+						self.on_flag = False
 
-				# have we reached a stimulus on time yet?
-				if stimidx.size:
+				# are we in the "ON" period of this stimulus?
+				if timeafterinitblank < self.offtimes[self.currentstim]:
 
-					stimidx = stimidx[-1]
-					self.stimidx = stimidx
+					# do the actual drawing
+					#-------------------------------
+					self.drawstim()
+					#-------------------------------
 
-					# are we done showing this stimulus yet?
-					if timeafterinitblank < self.offtimes[stimidx]:
-
-						# here's where we draw the
-						# current stimulus state
-						#-------------------------------
-						self.drawstim()
-						#-------------------------------
-
-					else:
-						pass
-
-					if not self.stimflags[stimidx]:
+					# get the actual ON time for this stimulus
+					if not self.on_flag:
 						recalcdt = time.time() - self.starttime
-						self.actualstimtimes[stimidx] = recalcdt
-						self.stimflags[stimidx] = 1.
+						self.actualstimtimes[self.currentstim] = recalcdt
+						self.on_flag = True
 
-				# we're still in init blank mode
-				else:
-					pass
+				if dt > self.finishtime and not self.finished:
+					self.finished = True
 
-			if dt > self.finishtime and not self.finished:
-				self.finished = True
-
-				print 	"Task '%s' finished: %s" %(self.taskname,time.asctime())
-				print 	"Absolute difference between" \
-					"theoretical and actual stimulus times:"
-				print np.abs(self.actualstimtimes - self.theoreticalstimtimes)
+					print 	"Task '%s' finished: %s" %(self.taskname,time.asctime())
+					print 	"Absolute difference between " \
+						"theoretical and actual stimulus times:"
+					print np.abs(self.actualstimtimes - self.theoreticalstimtimes)
 
 			self.dt = dt
 
@@ -205,7 +206,7 @@ class DotFlashTask(Task):
 
 	def drawstim(self):
 		# translate to the right position
-		gl.glTranslate(self.xpos[self.stimidx],self.ypos[self.stimidx],0.)
+		gl.glTranslate(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
 		# draw the dot
 		gl.glCallList(self.dot)
 
@@ -236,13 +237,14 @@ class DriftingBarTask(Task):
 		#---------------------------------------------------------------
 		radius = self.aperture_radius
 		aperture = gl.glGenLists(1)
+
 		gl.glNewList(aperture,gl.GL_COMPILE)
 
-		gl.glEnable(gl.GL_STENCIL_TEST)
-
-		# set up the clipping stencil buffer
+		# clear the stencil buffer
 		gl.glClearStencil(0)
 		gl.glClear(gl.GL_STENCIL_BUFFER_BIT)
+		
+		gl.glEnable(gl.GL_STENCIL_TEST)
 
 		# don't write to pixel RGBA values
 		gl.glColorMask(0,0,0,0)
@@ -273,14 +275,15 @@ class DriftingBarTask(Task):
 		#---------------------------------------------------------------
 		w,h = self.bar_width,self.bar_height
 		bar = gl.glGenLists(1)
+
 		gl.glNewList(bar,gl.GL_COMPILE)
 
 		gl.glColor4f(*self.bar_color)
 		gl.glBegin(gl.GL_QUADS)
-		gl.glVertex3f(-w/2., h/2, 0.)
-		gl.glVertex3f( w/2., h/2, 0.)
-		gl.glVertex3f( w/2.,-h/2, 0.)
-		gl.glVertex3f(-w/2.,-h/2, 0.)
+		gl.glVertex2f(-w/2., h/2 )
+		gl.glVertex2f( w/2., h/2 )
+		gl.glVertex2f( w/2.,-h/2 )
+		gl.glVertex2f(-w/2.,-h/2 )
 		gl.glEnd()
 
 		# disable stencil testing
@@ -326,10 +329,10 @@ class DriftingBarTask(Task):
 	def drawstim(self):
 
 		# get the current bar position
-		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.stimidx])
-		frac = bar_dt/(self.offtimes[self.stimidx] - self.ontimes[self.stimidx])
-		x = self.startx[self.stimidx] + frac*(self.stopx[self.stimidx]-self.startx[self.stimidx])
-		y = self.starty[self.stimidx] + frac*(self.stopy[self.stimidx]-self.starty[self.stimidx])
+		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
+		x = self.startx[self.currentstim] + frac*(self.stopx[self.currentstim]-self.startx[self.currentstim])
+		y = self.starty[self.currentstim] + frac*(self.stopy[self.currentstim]-self.starty[self.currentstim])
 
 		# draw the aperture to the stencil buffer
 		gl.glCallList(self.aperture)
@@ -338,7 +341,7 @@ class DriftingBarTask(Task):
 		gl.glTranslate(x,y,0.)
 
 		# rotate by the current bar angle
-		gl.glRotate(self.angle[self.stimidx],0.,0.,1.)
+		gl.glRotate(self.angle[self.currentstim],0.,0.,1.)
 
 		# draw the bar
 		gl.glCallList(self.bar)
@@ -382,11 +385,12 @@ class DriftingGratingTask(Task):
 		gl.glNewList(aperture,gl.GL_COMPILE)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glEnable(gl.GL_STENCIL_TEST)
 
-		# set up the clipping stencil buffer
+		# clear the stencil buffer
 		gl.glClearStencil(0)
 		gl.glClear(gl.GL_STENCIL_BUFFER_BIT)
+
+		gl.glEnable(gl.GL_STENCIL_TEST)
 
 		# don't write to pixel RGBA values while making the stencil
 		gl.glColorMask(0,0,0,0)
@@ -412,12 +416,11 @@ class DriftingGratingTask(Task):
 
 		gl.glEndList()
 		# --------------------------------------------------------------
-		self.aperture = aperture
 
 		# display list for the texture
 		# --------------------------------------------------------------
-		self.texlist = gl.glGenLists(1)
-		gl.glNewList(self.texlist, gl.GL_COMPILE)
+		texlist = gl.glGenLists(1)
+		gl.glNewList(texlist, gl.GL_COMPILE)
 
 		# we use blending so that the opacity of the grating varies
 		# sinusoidally
@@ -443,6 +446,8 @@ class DriftingGratingTask(Task):
 		gl.glEndList()
 		# --------------------------------------------------------------
 
+		self.aperture = aperture
+		self.texlist = texlist
 		self.phase = 0
 
 		pass
@@ -480,7 +485,7 @@ class DriftingGratingTask(Task):
 	def drawstim(self):
 
 		# update the current phase angle
-		on_dt = self.dt - (self.initblanktime + self.ontimes[self.stimidx])
+		on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
 		self.phase = on_dt*self.temporal_freqency
 
 		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
@@ -491,7 +496,7 @@ class DriftingGratingTask(Task):
 		gl.glTranslate(self.phase,0,0)
 
 		# rotate by the current orientation
-		gl.glRotatef(self.orientation[self.stimidx],0,0,1)
+		gl.glRotatef(self.orientation[self.currentstim],0,0,1)
 
 		# draw the aperture to the stencil buffer
 		gl.glCallList(self.aperture)

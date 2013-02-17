@@ -84,8 +84,10 @@ class TaskPanel(wx.Panel):
 		if self.master.run_task:
 			self.onRunTask()
 		self.master.loadTasks()
+		choicelist = self.master.taskdict.keys()
+		choicelist.sort()
 		self.taskmenu.SetValue('- Select a task -')
-		self.taskmenu.SetItems(self.master.taskdict.keys()[::-1])
+		self.taskmenu.SetItems(choicelist)
 
 	def onChooseTask(self,event):
 		if self.master.run_task:
@@ -428,11 +430,11 @@ class OptionPanel(wx.Panel):
 
 		attrnames = [	'show_photodiode','show_crosshairs',
 				'show_preview','fullscreen','on_top',
-				'run_loop']
+				'run_loop']#,'wait_for_vsync']
 		names = [	'Show photodiode','Show crosshairs',
 				'Show preview','Fullscreen','Always on top',
-				'Display loop']
-		events = [self.onPhoto,self.onCross,self.onPreview,self.onFullscreen,self.onTop,self.onDisplayloop]
+				'Display loop']#,'Wait for vsync']
+		events = [self.onPhoto,self.onCross,self.onPreview,self.onFullscreen,self.onTop,self.onDisplayloop]#,self.onVSync]
 		checkboxes = []
 		for ii in xrange(len(attrnames)):
 			ref = AttributeRef(self.master,attrnames[ii])
@@ -487,6 +489,13 @@ class OptionPanel(wx.Panel):
 		caller.SetValue(caller.ref.get())
 		# kick-start the rendering loop by forcing a draw event
 		self.master.stimcanvas.onDraw()
+
+	# def onVSync(self,event=None):
+	# 	caller = self.checkboxes['wait_for_vsync']
+	# 	newval = not caller.ref.get()
+	# 	caller.ref.set(newval)
+	# 	caller.SetValue(newval)
+	# 	self.master.stimcanvas.set_vsync(newval)
 
 class ControlWindow(wx.Frame):
 	def __init__(self,parent,master,**kwargs):

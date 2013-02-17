@@ -11,6 +11,7 @@ import OpenGL.GL as gl
 import OpenGL.GLU as glu
 import OpenGL.GLUT as glut
 import OpenGL.GL.framebufferobjects as fbo
+import OpenGL.GLX as glx
 
 import wx
 from wx.glcanvas import GLCanvas,GLCanvasWithContext
@@ -53,6 +54,21 @@ class StimCanvas(GLCanvas):
 
 		pass
 
+	# def set_vsync(self,state=True):
+	# 	"""
+	# 	In theory this should turn "wait for monitor vertical sync" on
+	# 	or off.
+	# 	"""
+
+	# 	if bool(glx.glXSwapIntervalSGI):
+	# 		glx.glXSwapIntervalSGI(state)
+	# 		print "SGI vsync: %s" %str(state)
+	# 	elif bool(glx.glXSwapIntervalMESA):
+	# 		glx.glXSwapIntervalMESA(state)
+	# 		print "MESA vsync: %s" %str(state)
+	# 	else:
+	# 		print "Can't set vsync"
+
 	def postinit(self):
 		"""
 		This is called at the start of onPaint if not self.done_predraw.
@@ -66,23 +82,7 @@ class StimCanvas(GLCanvas):
 		pass
 
 	def makedisplaylists(self):
-		""" Compile display lists for the crosshairs and photodiode """
-
-		# display list for the photodiode
-		#---------------------------------------------------------------
-		photodiodelist = gl.glGenLists(1)
-		gl.glNewList(photodiodelist, gl.GL_COMPILE)
-
-		gl.glBegin(gl.GL_POLYGON)
-		gl.glVertex2f( -1.0,  1.0 )	
-		gl.glVertex2f(  1.0,  1.0 )
-		gl.glVertex2f(  1.0, -1.0 )
-		gl.glVertex2f( -1.0, -1.0 )
-		gl.glVertex2f( -1.0,  1.0 )	
-		gl.glEnd()
-
-		gl.glEndList()
-		#---------------------------------------------------------------
+		""" Compile display list for the crosshairs """
 
 		# display list for the crosshairs
 		#---------------------------------------------------------------
@@ -118,7 +118,6 @@ class StimCanvas(GLCanvas):
 		gl.glEndList()
 		#---------------------------------------------------------------
 
-		self.photodiodelist = photodiodelist
   		self.crosshairlist = crosshairlist
 
   		pass
@@ -243,51 +242,66 @@ class StimCanvas(GLCanvas):
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
 
-		# we set the clear color according to the background color of
-		# the current task (if there is one)
-		if self.master.current_task:
-			gl.glClearColor(*self.master.current_task.background_color)
-		else:
-			gl.glClearColor(0., 0., 0., 1.)
+		# clear color and depth buffers
+		gl.glClearColor(0., 0., 0., 0.)
+		gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
 
-		# clear the color, depth and stencil buffers
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
+
+		gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
+		gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST);
 
 		#---------------------------------------------------------------
 		# NB - we need to draw from back to front in order for depth
 		# testing to work correctly!
 		#---------------------------------------------------------------
 
-		# go to the stimulus area, call display() to show the current
-		# stimulus state
-		if self.master.run_task:
-			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos, self.master.c_xpos, 0);
-			gl.glScale(*(self.master.c_scale,)*3)
-			self.master.current_task.display()
+		# enable scissor test so that only the stimulus area is
+		# accessible
+		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
+		gl.glScissor(	int(x-(scale+1)),
+				int(y-(scale+1)),
+				int(2*(scale+1)),
+				int(2*(scale+1)))
 
-		# we always draw the photodiode trigger but we change its color
-		# conditionally - when off it will appear black against a white
-		# background
-		gl.glLoadIdentity()
-		gl.glTranslate(self.master.p_ypos,self.master.p_xpos, -127)
-		gl.glScale(*(self.master.p_scale,)*3)
-		if (self.master.show_photodiode):
-			gl.glColor4f(1.,1.,1.,1.)
-		else:
-			gl.glColor4f(0.,0.,0.,1.)
-		gl.glCallList(self.photodiodelist)
+		gl.glEnable(gl.GL_SCISSOR_TEST)
+
+		# clear the stimulus area using the task background color. we do
+		# this even if the task isn't running yet so that the correct
+		# background color is displayed in advance.
+		if self.master.current_task:
+			gl.glClearColor(*self.master.current_task.background_color)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+		# draw the current stimulus state
+		if self.master.run_task:
+			gl.glTranslate(x, y, 0)
+			gl.glScale(*(scale,)*3)
+			self.master.current_task.display()
 
 		# draw the crosshairs
 		if self.master.show_crosshairs:
 			gl.glLoadIdentity()
-			gl.glTranslate(self.master.c_ypos,self.master.c_xpos, -128)
-			gl.glScale(*(self.master.c_scale,)*3)
+			gl.glTranslate(x, y, -127)
+			gl.glScale(*(scale,)*3)
 			gl.glCallList(self.crosshairlist)
 
+		# draw the photodiode
+		if self.master.show_photodiode:
+			x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
+			# clear the region containing the photodiode
+			gl.glScissor(	int(x-(scale+1)),
+					int(y-(scale+1)),
+					int(2*(scale+1)),
+					int(2*(scale+1)))
+			gl.glClearColor(1,1,1,1)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+		# disable scissor test, any part of the screen is accessible
+		gl.glDisable(gl.GL_SCISSOR_TEST)
+
 		# if we're rendering offscreen we now need to blit the contents
-		# of the FBO to the back buffer so that they will be visible
-		# when we call SwapBuffers()
+		# of the FBO to the back buffer so that they will be made
+		# visible when we call SwapBuffers()
 		if self.master.show_preview:
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
@@ -299,10 +313,11 @@ class StimCanvas(GLCanvas):
 		# visible in the canvas
 		self.SwapBuffers()
 
-		# if we're running the display loop, queue another draw call
-		if self.master.run_loop:
-			self.drawcount += 1
-			self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
+		# we only draw every nth frame to the preview canvas to reduce
+		# copying overhead
+		if self.master.show_preview:
+			if not self.drawcount % self.master.preview_frequency:
+				[slave.onDraw() for slave in self.slaves]
 
 		# keep a running minimum of the framerate and update the task
 		# status panel
@@ -315,11 +330,10 @@ class StimCanvas(GLCanvas):
 			self.drawcount = 0
 			self.slowestframe = -1
 
-		# we only draw every nth frame to the preview canvas to reduce
-		# copying overhead
-		if self.master.show_preview:
-			if not self.drawcount % self.master.preview_frequency:
-				[slave.onDraw() for slave in self.slaves]
+		# if we're running the display loop, queue another draw call
+		if self.master.run_loop:
+			self.drawcount += 1
+			self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
 
 
 class PreviewCanvas(GLCanvas):
@@ -335,7 +349,8 @@ class PreviewCanvas(GLCanvas):
 	def __init__(self,parent,stimcanvas,size=None):
 
 		# we don't need a depth or stencil buffer, since this is all
-		# taken care of by the offscreen framebuffer
+		# taken care of by the offscreen framebuffer. in fact, it
+		# doesn't really need to be double-buffered either. meh.
 		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
@@ -434,8 +449,7 @@ class PreviewCanvas(GLCanvas):
 			self.done_postinit = True
 
 		gl.glViewport(0,0,*self.currsize)
-
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+		# gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		# set up the projection
 		gl.glMatrixMode(gl.GL_PROJECTION)

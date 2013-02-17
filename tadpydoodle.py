@@ -22,9 +22,9 @@ class AppThread(multiprocessing.Process):
 	'window':	{'on_top':True},
 	'photodiode':	{'show_photodiode':True,'p_xpos':380,'p_ypos':230 ,'p_scale':45},
 	'crosshairs':	{'show_crosshairs':True,'c_xpos':375,'c_ypos':710,'c_scale':190},
-	'stimulus':	{'show_preview':True,'preview_frequency':5,'fullscreen':False,
+	'stimulus':	{'show_preview':True,'preview_frequency':2,'fullscreen':False,
 			'x_resolution':1024,'y_resolution':768,'run_loop':True,
-			'min_delta_t':1,'framerate_window':20}
+			'wait_for_vsync':False,'min_delta_t':1,'framerate_window':50}
 			}
 
 	# configuration file
@@ -40,6 +40,10 @@ class AppThread(multiprocessing.Process):
 	def run(self):
 		app = wx.PySimpleApp()
 		self.loadConfig()
+
+		# setting this environment variable forces vsync on/off
+		os.environ.update({'vblank_mode':str(int(self.wait_for_vsync))})
+
 		self.stimframe = wx.Frame(None,-1,size=(self.x_resolution,self.y_resolution),title='Stimulus window')
 		self.stimframe.Bind(wx.EVT_CLOSE, self.onClose)
 		self.stimcanvas = glc.StimCanvas(self.stimframe,self)
@@ -163,7 +167,7 @@ class AppThread(multiprocessing.Process):
 			self.stimframe.Destroy()
 		if self.controlwindow:
 			self.controlwindow.Destroy()
-
+			
 if __name__ == '__main__':
 	t = AppThread()
 	t.run()
