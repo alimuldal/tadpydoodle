@@ -67,7 +67,7 @@ class Task(object):
 		self.currentstim = -1
 		self.on_flag = False
 		self.off_flag = False
-		self.stim_on_last_frame = False
+
 		pass
 
 
@@ -79,6 +79,8 @@ class Task(object):
 		# we haven't started yet
 		if self.starttime == -1:
 			self.starttime = time.time()
+			self.stim_on_last_frame = False
+			self.photodiode_change_last_frame = False
 
 		# we've started
 		else:
@@ -100,6 +102,10 @@ class Task(object):
 
 			if self.canvas.master.show_photodiode != new_photodiode_state:
 				self.canvas.do_refresh_photodiode = True
+				self.photodiode_change_last_frame = True
+			elif self.photodiode_change_last_frame:
+				self.canvas.do_refresh_photodiode = True
+				self.photodiode_change_last_frame = False
 
 			self.canvas.master.show_photodiode = new_photodiode_state
 	
@@ -124,11 +130,12 @@ class Task(object):
 					self.drawstim()
 					#-------------------------------
 
-					# force a re-draw of the stimulus area
+					# force a re-draw of the stimulus area.
+					# also make sure we re-draw one more
+					# time after the stimulus has finished
+					# in order to clear the 'lingering' last
+					# stimulus frame
 					self.canvas.do_refresh_stimbox = True
-
-					# make sure we re-draw one more time after the stimulus has
-					# finished
 					self.stim_on_last_frame = True
 
 					# get the actual ON time for this stimulus

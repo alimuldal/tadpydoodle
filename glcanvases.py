@@ -29,7 +29,7 @@ class StimCanvas(GLCanvas):
 	"""
 
 	def __init__(self,parent,master):
-		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
+		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,8,
 				wx.glcanvas.WX_GL_STENCIL_SIZE,8]
@@ -440,7 +440,7 @@ class PreviewCanvas(GLCanvas):
 		# we don't need a depth or stencil buffer, since this is all
 		# taken care of by the offscreen framebuffer. in fact, it
 		# doesn't really need to be double-buffered either. meh.
-		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
+		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
 				wx.glcanvas.WX_GL_STENCIL_SIZE,0]

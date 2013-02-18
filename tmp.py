@@ -1,5 +1,7 @@
 import wx
-import copy
+
+from wx.lib.agw import ultimatelistctrl as ULC
+# from wx.lib.mixins import listctrl as listmix
 
 class PlaylistPanel(wx.Panel):
 
@@ -15,9 +17,24 @@ class PlaylistPanel(wx.Panel):
 		self.task_tree.Bind(wx.EVT_LEFT_DCLICK,self.onTreeDoubleClick)
 
 		# a list box that contains the selected tasks
-		self.playlist_box = wx.ListCtrl(self,-1,style=wx.LC_SINGLE_SEL|wx.LC_REPORT)
-		for ii,paramname in enumerate(['Name','Subclass']):
-			self.playlist_box.InsertColumn(ii,paramname,width=wx.LIST_AUTOSIZE)
+		# self.playlist_box = wx.ListCtrl(self,-1,style=wx.LC_SINGLE_SEL|wx.LC_REPORT)
+		self.playlist_box = ULC.UltimateListCtrl(self,-1,agwStyle=ULC.ULC_REPORT|ULC.ULC_HAS_VARIABLE_ROW_HEIGHT|ULC.ULC_MASK_CHECK)
+
+		# for ii,paramname in enumerate(['Name','Subclass','']):
+		# 	self.playlist_box.InsertColumn(ii,paramname,width=wx.LIST_AUTOSIZE)
+
+
+		entry = ULC.UltimateListItem()
+		entry._mask = ULC.ULC_MASK_CHECK
+		entry._kind = 2
+		entry._text = ''
+
+		entry = ULC.UltimateListItem()
+		entry._mask = ULC.ULC_MASK_CHECK
+		entry._kind = 2
+		entry._text = 'Playing?'
+
+
 		self.playlist_box.Bind(wx.EVT_LIST_ITEM_ACTIVATED,self.onPlaylistActivated)
 		self.playlist_box.Bind(wx.EVT_LEFT_DOWN,self.onPlaylistClick)
 
@@ -54,9 +71,16 @@ class PlaylistPanel(wx.Panel):
 			self.task_tree.SortChildren(item)
 
 	def append_to_playlist(self,task):
-		self.playlist_box.Append([task.taskname,task.subclass])
+
+		item_no = self.playlist_box.GetItemCount()
+
+		self.playlist_box.InsertStringItem(item_no,task.taskname)
+		self.playlist_box.SetStringItem(item_no,1,task.subclass)
+		# self.playlist_box.SetItemWindow(item_no,col=2,wnd=rb,expand=True)
+
 		auto_resize_cols(self.playlist_box)
 		self.master.task_queue.append(task)
+
 		if self.master.current_task is None:
 			self.set_current_task(task)
 
