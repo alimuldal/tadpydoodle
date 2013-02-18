@@ -290,8 +290,8 @@ class StimCanvas(GLCanvas):
 			self.do_refresh_everything = False
 
 
-		gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
-		gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST);
+		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
+		# gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST);
 
 		#---------------------------------------------------------------
 		# NB - we need to draw from back to front in order for depth
@@ -300,9 +300,9 @@ class StimCanvas(GLCanvas):
 
 		# enable scissor test so that only selected regions of the
 		# canvas are affected
-
 		gl.glEnable(gl.GL_SCISSOR_TEST)
 
+		# now draw/clear calls only affect the box where the stimulus is
 		gl.glScissor( *self.stimbounds)
 
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
@@ -315,6 +315,7 @@ class StimCanvas(GLCanvas):
 			# advance.
 			if self.master.current_task:
 				gl.glClearColor(*self.master.current_task.background_color)
+
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
 
 			self.blit_stimbox = True
@@ -336,7 +337,7 @@ class StimCanvas(GLCanvas):
 		# draw the photodiode
 		if self.do_refresh_photodiode:
 
-			gl.glScissor( *self.photobounds)
+			gl.glScissor( *self.photobounds )
 
 			if self.master.show_photodiode:
 				# clear the region containing the photodiode
@@ -356,17 +357,30 @@ class StimCanvas(GLCanvas):
 		# of the FBO to the back buffer so that they will be made
 		# visible when we call SwapBuffers()
 		if self.master.show_preview:
+
+			# we read from the framebuffer and write to the back buffer
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 
-			# conditionally blit suff
+			# whenever we re-drew the whole scene, we need to blit
+			# the whole viewport to the back buffer
 			if self.blit_everything:
+
+				# we can't assume that the back buffer is
+				# empty before we start copying subregions to
+				# it - clear it first, or we get a crazy
+				# glitchy background on the mac!
+				gl.glClearColor(0,0,0,0)
+				gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
 				x0,y0,w,h = self.stimbounds
 				fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,x0,y0,x0+w,y0+h,
 							gl.GL_COLOR_BUFFER_BIT,
 							gl.GL_NEAREST)
 				self.blit_everything = False
 
+			# otherwise we only need to copy the bits that were
+			# actually re-drawn in this frame
 			else:
 				if self.blit_stimbox:
 					x0,y0,w,h = self.stimbounds

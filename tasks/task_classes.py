@@ -67,6 +67,7 @@ class Task(object):
 		self.currentstim = -1
 		self.on_flag = False
 		self.off_flag = False
+		self.stim_on_last_frame = False
 		pass
 
 
@@ -126,11 +127,19 @@ class Task(object):
 					# force a re-draw of the stimulus area
 					self.canvas.do_refresh_stimbox = True
 
+					# make sure we re-draw one more time after the stimulus has
+					# finished
+					self.stim_on_last_frame = True
+
 					# get the actual ON time for this stimulus
 					if not self.on_flag:
 						recalcdt = time.time() - self.starttime
 						self.actualstimtimes[self.currentstim] = recalcdt
 						self.on_flag = True
+
+				elif self.stim_on_last_frame:
+					self.canvas.do_refresh_stimbox = True
+					self.canvas.stim_on_last_frame = False
 
 				if dt > self.finishtime and not self.finished:
 					self.finished = True
