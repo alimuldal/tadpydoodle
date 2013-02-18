@@ -46,6 +46,12 @@ class StimCanvas(GLCanvas):
 		self.starttime = time.time()
 		self.currtime = self.starttime
 
+		self.do_recalc_photo_bounds = True
+		self.do_recalc_stim_bounds = True
+		self.do_refresh_everything = True
+		self.do_refresh_photodiode = True
+		self.do_refresh_stimbox = True
+
 		# we do this in order that self.drawqueue.hasRun() == True
 		def dummy(): pass
 		self.drawqueue = wx.CallLater(0,dummy)
@@ -197,6 +203,27 @@ class StimCanvas(GLCanvas):
 
 		pass
 
+	def recalc_stim_bounds(self):
+		"""
+		recalculate the bounding boxes for the stimulus area
+		"""
+
+		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
+		self.stimbounds = ( 	int(np.floor(x-(scale+3))),
+			 		int(np.floor(y-(scale+3))),
+			 		int(np.ceil(2*(scale+3))),
+			 		int(np.ceil(2*(scale+3)))
+			 		)
+
+	def recalc_photo_bounds(self):
+
+		x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
+		self.photobounds = ( 	int(np.floor(x-(scale+3))),
+			 		int(np.floor(y-(scale+3))),
+			 		int(np.ceil(2*(scale+3))),
+			 		int(np.ceil(2*(scale+3)))
+			 		)
+
 	def onPaint(self,event=None):
 		"""
 		This gets called whenever the parent window contents need to be
@@ -207,6 +234,12 @@ class StimCanvas(GLCanvas):
 		if not self.done_postinit:
 			self.postinit()
 			self.done_postinit = True
+
+		# recalculate the stimulus and photodiode bounding boxes, force
+		# a re-draw of the whole scene
+		self.recalc_stim_bounds()
+		self.recalc_photo_bounds()
+		self.do_refresh_everything = True
 
 		# only redraw if there is not already a pending draw request!
 		if self.drawqueue.hasRun:
@@ -243,8 +276,17 @@ class StimCanvas(GLCanvas):
 		gl.glLoadIdentity()
 
 		# clear color and depth buffers
-		gl.glClearColor(0., 0., 0., 0.)
-		gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+		if self.do_refresh_everything:
+
+			gl.glClearColor(0., 0., 0., 0.)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+
+			# we'll need to re-draw these after we've wiped the
+			# whole scene
+			self.do_refresh_photodiode = True
+			self.do_refresh_stimbox = True
+
+			self.do_refresh_everything = False
 
 
 		gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
@@ -255,22 +297,26 @@ class StimCanvas(GLCanvas):
 		# testing to work correctly!
 		#---------------------------------------------------------------
 
-		# enable scissor test so that only the stimulus area is
-		# accessible
-		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
-		gl.glScissor(	int(x-(scale+1)),
-				int(y-(scale+1)),
-				int(2*(scale+1)),
-				int(2*(scale+1)))
+		# enable scissor test so that only selected regions of the
+		# canvas are affected
 
 		gl.glEnable(gl.GL_SCISSOR_TEST)
 
-		# clear the stimulus area using the task background color. we do
-		# this even if the task isn't running yet so that the correct
-		# background color is displayed in advance.
-		if self.master.current_task:
-			gl.glClearColor(*self.master.current_task.background_color)
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+		gl.glScissor( *self.stimbounds)
+
+		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
+
+		if self.do_refresh_stimbox:
+
+			# clear the stimulus area using the task background
+			# color. we do this even if the task isn't running yet
+			# so that the correct background color is displayed in
+			# advance.
+			if self.master.current_task:
+				gl.glClearColor(*self.master.current_task.background_color)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+
+			self.do_refresh_stimbox = False
 
 		# draw the current stimulus state
 		if self.master.run_task:
@@ -286,15 +332,19 @@ class StimCanvas(GLCanvas):
 			gl.glCallList(self.crosshairlist)
 
 		# draw the photodiode
-		if self.master.show_photodiode:
-			x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
-			# clear the region containing the photodiode
-			gl.glScissor(	int(x-(scale+1)),
-					int(y-(scale+1)),
-					int(2*(scale+1)),
-					int(2*(scale+1)))
-			gl.glClearColor(1,1,1,1)
+		if self.do_refresh_photodiode:
+
+			gl.glScissor( *self.photobounds)
+
+			if self.master.show_photodiode:
+				# clear the region containing the photodiode
+				gl.glClearColor(1,1,1,1)
+			else:
+				gl.glClearColor(0,0,0,0)
+
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+			self.do_refresh_photodiode = False
 
 		# disable scissor test, any part of the screen is accessible
 		gl.glDisable(gl.GL_SCISSOR_TEST)
@@ -305,9 +355,13 @@ class StimCanvas(GLCanvas):
 		if self.master.show_preview:
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
+
+			# would be better to conditionally blit the
+			# stimulus/photodiode box...
 			fbo.glBlitFramebuffer(	0,0,xres,yres,0,0,xres,yres,
 						gl.GL_COLOR_BUFFER_BIT,
 						gl.GL_NEAREST)
+
 
 		# swap the front and back buffers so that the new frame is now
 		# visible in the canvas
@@ -492,21 +546,38 @@ class PreviewCanvas(GLCanvas):
 		if mode == 1:
 			controls = self.master.controlwindow.adjustpanel.p_textctls
 			prefix = 'p_'
+
+			# recalculate the photodiode bounding box
+			self.stimcanvas.recalc_photo_bounds()
+
 		else:
 			controls = self.master.controlwindow.adjustpanel.c_textctls
 			prefix = 'c_'
+
+			# recalculate the stimulus bounding box
+			self.stimcanvas.recalc_stim_bounds()
 
 		controls[prefix+'xpos'].ref.set(display_x)
 		controls[prefix+'xpos'].SetValue(str(display_x))
 		controls[prefix+'ypos'].ref.set(display_y)
 		controls[prefix+'ypos'].SetValue(str(display_y))
 
+		# force a re-draw of the whole scene
+		self.stimcanvas.do_refresh_everything = True
+
 	def onWheel(self,event):
 
 		if wx.GetKeyState(wx.WXK_F1):
 			control = self.master.controlwindow.adjustpanel.p_textctls['p_scale']
+
+			# recalculate the photodiode bounding box
+			self.stimcanvas.recalc_photo_bounds()
+
 		elif wx.GetKeyState(wx.WXK_F2):
 			control = self.master.controlwindow.adjustpanel.c_textctls['c_scale']
+
+			# recalculate the stimulus bounding box
+			self.stimcanvas.recalc_stim_bounds()
 		else:
 			return
 
@@ -517,3 +588,6 @@ class PreviewCanvas(GLCanvas):
 		val += delta
 		control.ref.set(val)
 		control.SetValue(str(val))
+
+		# force a re-draw of the whole scene
+		self.stimcanvas.do_refresh_everything = True

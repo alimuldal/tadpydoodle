@@ -80,6 +80,9 @@ class TaskPanel(wx.Panel):
 		else:
 			obj.SetValue(True)
 
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
+
 	def onReload(self,event):
 		if self.master.run_task:
 			self.onRunTask()
@@ -101,6 +104,9 @@ class TaskPanel(wx.Panel):
 		task_class = self.master.taskdict[taskname]
 		self.master.current_task = task_class(self.master.stimcanvas)
 		self.parent.statuspanel.setTask()
+
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
 
 class StatusPanel(wx.Panel):
 
@@ -324,9 +330,15 @@ class AdjustPanel(wx.Panel):
 		if self.p_rb.GetValue():
 			group = self.p_textctls
 			prefix = 'p_'
+
+			# recalculate the photodiode bounding box
+			self.master.stimcanvas.recalc_photo_bounds()
 		else:
 			group = self.c_textctls
 			prefix = 'c_'
+
+			# recalculate the stimulus area bounding box
+			self.master.stimcanvas.recalc_stim_bounds()
 
 		# which direction? how far?
 		if label == 'UP':
@@ -358,14 +370,25 @@ class AdjustPanel(wx.Panel):
 		# update the text box string
 		control.SetValue(str(val))
 
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
+
+
 	def keyboardNudge(self,event):
 		
 		if wx.GetKeyState(wx.WXK_F1):
 			group = self.p_textctls
 			prefix = 'p_'
+
+			# recalculate the photodiode bounding box
+			self.master.stimcanvas.recalc_photo_bounds()
+
 		elif wx.GetKeyState(wx.WXK_F2):
 			group = self.c_textctls
 			prefix = 'c_'
+
+			# recalculate the stimulus area bounding box
+			self.master.stimcanvas.recalc_stim_bounds()
 		else:
 			return
 
@@ -395,6 +418,9 @@ class AdjustPanel(wx.Panel):
 		control.ref.set(val)
 		control.SetValue(str(val))
 
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
+
 	def onText(self,event):
 		string = event.GetString()
 		caller = event.GetEventObject()
@@ -407,6 +433,11 @@ class AdjustPanel(wx.Panel):
 			pass
 
 		caller.SetValue(str(caller.ref.get()))
+
+		# recalculate the bounding boxes & re-draw
+		self.master.stimcanvas.recalc_photo_bounds()
+		self.master.stimcanvas.recalc_stim_bounds()
+		self.master.stimcanvas.do_refresh_everything = True
 
 class OptionPanel(wx.Panel):
 
@@ -455,10 +486,17 @@ class OptionPanel(wx.Panel):
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
 
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
+
+
 	def onCross(self,event=None):
 		caller = self.checkboxes['show_crosshairs']
 		caller.ref.set(not caller.ref.get())
 		caller.SetValue(caller.ref.get())
+
+		# force a full re-draw
+		self.master.stimcanvas.do_refresh_everything = True
 
 	def onPreview(self,event=None):
 		caller = self.checkboxes['show_preview']

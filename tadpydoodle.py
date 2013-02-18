@@ -22,9 +22,9 @@ class AppThread(multiprocessing.Process):
 	'window':	{'on_top':True},
 	'photodiode':	{'show_photodiode':True,'p_xpos':380,'p_ypos':230 ,'p_scale':45},
 	'crosshairs':	{'show_crosshairs':True,'c_xpos':375,'c_ypos':710,'c_scale':190},
-	'stimulus':	{'show_preview':True,'preview_frequency':2,'fullscreen':False,
+	'stimulus':	{'show_preview':True,'preview_frequency':5,'fullscreen':False,
 			'x_resolution':1024,'y_resolution':768,'run_loop':True,
-			'wait_for_vsync':False,'min_delta_t':1,'framerate_window':50}
+			'wait_for_vsync':False,'min_delta_t':1,'framerate_window':100}
 			}
 
 	# configuration file

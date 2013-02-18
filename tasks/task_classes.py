@@ -93,9 +93,14 @@ class Task(object):
 
 			# if it's before the end of the photodiode on period,
 			# set the photodiode trigger on
-			self.canvas.master.show_photodiode = (
+			new_photodiode_state = (
 				dt < (self.frametimes[self.currentframe] + self.photodiodeontime)
 				)
+
+			if self.canvas.master.show_photodiode != new_photodiode_state:
+				self.canvas.do_refresh_photodiode = True
+
+			self.canvas.master.show_photodiode = new_photodiode_state
 	
 			timeafterinitblank = dt - self.initblanktime
 
@@ -117,6 +122,9 @@ class Task(object):
 					#-------------------------------
 					self.drawstim()
 					#-------------------------------
+
+					# force a re-draw of the stimulus area
+					self.canvas.do_refresh_stimbox = True
 
 					# get the actual ON time for this stimulus
 					if not self.on_flag:
