@@ -108,6 +108,14 @@ class AppThread(multiprocessing.Process):
 			for option,value in subsect.iteritems():
 				self.__setattr__(option,value)
 
+		# force a re-draw of the canvas if it exists - the display
+		# config may have changed
+		if hasattr(self,'stimcanvas'):
+			self.stimcanvas.recalc_stim_bounds()
+			self.stimcanvas.recalc_photo_bounds()
+			self.stimcanvas.do_refresh_everything = True
+
+
 	def saveConfig(self,event=None):
 		"""
 		Save the current configuration to a '.tadpydoodlerc' file

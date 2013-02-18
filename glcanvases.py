@@ -286,6 +286,7 @@ class StimCanvas(GLCanvas):
 			self.do_refresh_photodiode = True
 			self.do_refresh_stimbox = True
 
+			self.blit_everything = True
 			self.do_refresh_everything = False
 
 
@@ -316,6 +317,7 @@ class StimCanvas(GLCanvas):
 				gl.glClearColor(*self.master.current_task.background_color)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
 
+			self.blit_stimbox = True
 			self.do_refresh_stimbox = False
 
 		# draw the current stimulus state
@@ -344,6 +346,7 @@ class StimCanvas(GLCanvas):
 
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
+			self.blit_photodiode = True
 			self.do_refresh_photodiode = False
 
 		# disable scissor test, any part of the screen is accessible
@@ -356,12 +359,30 @@ class StimCanvas(GLCanvas):
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 
-			# would be better to conditionally blit the
-			# stimulus/photodiode box...
-			fbo.glBlitFramebuffer(	0,0,xres,yres,0,0,xres,yres,
-						gl.GL_COLOR_BUFFER_BIT,
-						gl.GL_NEAREST)
+			# conditionally blit suff
+			if self.blit_everything:
+				x0,y0,w,h = self.stimbounds
+				fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,x0,y0,x0+w,y0+h,
+							gl.GL_COLOR_BUFFER_BIT,
+							gl.GL_NEAREST)
+				self.blit_everything = False
 
+			else:
+				if self.blit_stimbox:
+					x0,y0,w,h = self.stimbounds
+					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+								x0,y0,x0+w,y0+h,
+								gl.GL_COLOR_BUFFER_BIT,
+								gl.GL_NEAREST)
+					self.blit_stimbox = False
+
+				if self.blit_photodiode:
+					x0,y0,w,h = self.photobounds
+					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+								x0,y0,x0+w,y0+h,
+								gl.GL_COLOR_BUFFER_BIT,
+								gl.GL_NEAREST)
+					self.blit_photodiode = False
 
 		# swap the front and back buffers so that the new frame is now
 		# visible in the canvas
