@@ -5,6 +5,40 @@ def seconds2human(secs):
 	mins, secs = divmod(secs, 60)
 	return '%02d:%05.2f' % (mins, secs)
 
+def get_onsets_and_offsets(boolvec):
+	""" get the onset and offset indices for a boolean vector"""
+	import numpy as np
+
+	if not np.any(boolvec):
+		return np.array([]),np.array([])
+	
+	diff = np.diff(boolvec)
+
+	if not np.any(diff > 0):
+		onsets = np.array([0])
+	else:
+		onsets = np.where(diff > 0)[0]
+		if boolvec[0]:
+			onsets = np.concatenate((np.atleast_1d(0),np.atleast_1d(onsets)))
+
+	if not np.any(diff < 0):
+		offsets = np.array([0])
+	else:
+		offsets = np.where(diff < 0)[0]
+		if boolvec[-1]:
+			offsets = np.concatenate((np.atleast_1d(offsets),np.atleast_1d(len(boolvec)-1)))
+
+	assert len(onsets) == len(offsets)
+
+	return onsets,offsets
+
+def window_iter(X,win):
+	n = X.shape[0]
+	for ii in xrange(n):
+		start = max((0,ii-(win/2)))
+		stop = min((n-1,ii+(win/2)))
+		yield X[start:stop]
+
 class AttributeRef(object):
 	def __init__(self,masterobj,attrname):
 		self.master = masterobj
@@ -70,8 +104,14 @@ class TaskPanel(wx.Panel):
 				l,c = obj.start
 				self.master.stimcanvas.drawcount = 0
 				self.master.current_task.reinit()
+				# enable the photodiode checkbox while the task is not running
+				self.parent.optionpanel.checkboxes['show_photodiode'].Enable(True)
+
 			else:
 				l,c = obj.stop
+				# grey out the photodiode checkbox while the task is running
+				self.parent.optionpanel.checkboxes['show_photodiode'].Enable(False)
+
 			self.master.controlwindow.statuspanel.onUpdate()
 			obj.SetValue(not running)
 			obj.SetLabel(l)
@@ -439,6 +479,113 @@ class AdjustPanel(wx.Panel):
 		self.master.stimcanvas.recalc_stim_bounds()
 		self.master.stimcanvas.do_refresh_everything = True
 
+class LogPanel(wx.Panel):
+
+	def __init__(self,parent,master):
+		super(LogPanel,self).__init__(parent)
+
+		self.master = master
+
+		statbox = wx.StaticBox(self,wx.VERTICAL,label='Logging options')
+
+		self.logging_on = wx.CheckBox(self,-1,label='Enable')
+		self.logging_on.Bind(wx.EVT_CHECKBOX,self.onLogging)
+		self.logging_on.SetValue(self.master.log_framerate)
+
+		self.plot_button = wx.Button(self,-1,label='Diagnostic plots')
+		self.plot_button.Bind(wx.EVT_BUTTON,self.onDiagnosticPlot)
+
+		self.clear_logs = wx.Button(self,-1,label='Clear frame log')
+		self.clear_logs.Bind(wx.EVT_BUTTON,self.onClearLogs)
+
+		button_hsizer = wx.BoxSizer(wx.HORIZONTAL)
+		button_hsizer.AddMany([(but,1,wx.EXPAND) for but in [self.plot_button,self.clear_logs]])
+
+		statbox_vsizer = wx.StaticBoxSizer(statbox,wx.VERTICAL)
+		statbox_vsizer.Add(self.logging_on,0,wx.EXPAND|wx.ALL,5)
+		statbox_vsizer.Add(button_hsizer,0,wx.EXPAND|wx.ALL,5)
+
+		self.SetSizerAndFit(statbox_vsizer)
+
+	def onLogging(self,event=None):
+		""" toggle logging on and off """
+		newval = not(self.master.log_framerate)
+		self.master.log_framerate = newval
+		self.logging_on.SetValue(newval)
+
+	def onClearLogs(self,event=None):
+		""" clear the frame time logs """
+		self.master.stimcanvas.frametimes.clear()
+		self.master.stimcanvas.stimdraws.clear()
+		self.master.stimcanvas.alldraws.clear()
+
+	def onDiagnosticPlot(self,event=None):
+
+		#--------------------------------------------------------------------------------------
+		# plot frame times
+		from matplotlib import pyplot as pp
+		from matplotlib import pylab as pl
+		import numpy as np
+		pl.ion()
+
+		fig1,ax1 = pp.subplots(1,1)
+		ax1.hold(True)
+		frametimes = np.array(self.master.stimcanvas.frametimes)
+		nframes = len(frametimes)
+		# ax1.fill_between(range(nframes),[0]*nframes,self.master.stimcanvas.frametimes)
+		# ax1.plot(range(nframes),self.master.stimcanvas.frametimes,'-k')
+		mean_ft = []
+		min_ft = []
+		max_ft = []
+		win = self.master.framerate_window
+		for frames in window_iter(frametimes,win):
+			mean_ft.append(np.mean(frames))
+			min_ft.append(np.min(frames))
+			max_ft.append(np.max(frames))
+		mean_ft = np.array(mean_ft)
+		min_ft = np.array(min_ft)
+		max_ft = np.array(max_ft)
+
+
+		stimon,stimoff = get_onsets_and_offsets(self.master.stimcanvas.stimdraws)
+		if any(stimon) and any(stimoff):
+			for ii in xrange(stimon.size):
+				if ii == 0:
+					ax1.axvspan(stimon[ii],stimoff[ii],alpha=0.5,color='g',label='Stimulus draws')
+				else:
+					ax1.axvspan(stimon[ii],stimoff[ii],alpha=0.5,color='g',label='__nolegend__')
+
+		alldrawon,alldrawoff = get_onsets_and_offsets(self.master.stimcanvas.alldraws)
+		if any(alldrawon) and any(alldrawoff):
+			for ii in xrange(alldrawon.size):
+				if ii == 0:
+					ax1.axvspan(alldrawon[ii],alldrawoff[ii],alpha=0.5,color='r',label='Full-frame draws')
+				else:
+					ax1.axvspan(alldrawon[ii],alldrawoff[ii],alpha=0.5,color='r',label='__nolegend__')
+
+		ax1.fill_between(np.arange(nframes),min_ft,max_ft,alpha=0.3,facecolor='b',edgecolor='None')
+		ax1.plot(np.arange(nframes),frametimes,'-k',alpha=0.5,label='Frame draw times')
+		ax1.plot(np.arange(nframes),mean_ft,'-b',label='Mean draw time',lw=2)
+
+		ax1.set_ylim(0,0.05)
+		ax1.set_xlabel('Frame #')
+		ax1.legend()
+
+		fig1.tight_layout()
+
+		fig2,ax2 = pp.subplots(1,1)
+
+		ax2.hist(frametimes,bins=10**np.linspace(-4,0,50))
+		ax2.set_xscale('log')
+		ax2.set_xlabel('Draw time (sec)')
+		ax2.set_ylabel('Frequency')
+
+		pp.show(block=True)
+		pl.ioff()
+
+		#--------------------------------------------------------------------------------------
+
+
 class OptionPanel(wx.Panel):
 
 	def __init__(self,parent,master):
@@ -478,7 +625,6 @@ class OptionPanel(wx.Panel):
 
 		check_sizer = wx.StaticBoxSizer(check_statbox,wx.VERTICAL)
 		check_sizer.AddMany([(cc,0,wx.EXPAND|wx.ALL,5) for cc in checkboxes])
-
 		self.SetSizerAndFit(check_sizer)
 
 	def onPhoto(self,event=None):
@@ -488,7 +634,6 @@ class OptionPanel(wx.Panel):
 
 		# force a full re-draw
 		self.master.stimcanvas.do_refresh_everything = True
-
 
 	def onCross(self,event=None):
 		caller = self.checkboxes['show_crosshairs']
@@ -546,6 +691,8 @@ class ControlWindow(wx.Frame):
 		self.statuspanel = StatusPanel(self,master)
 		self.adjustpanel = AdjustPanel(self,master)
 		self.optionpanel = OptionPanel(self,master)
+		self.logpanel = LogPanel(self,master)
+
 
 		left = wx.BoxSizer(wx.VERTICAL)
 		left.Add(self.taskpanel,0,wx.EXPAND)
@@ -553,6 +700,7 @@ class ControlWindow(wx.Frame):
 		left.Add(self.adjustpanel,0,wx.EXPAND)
 		left.Add((0,0),1,wx.EXPAND)
 		left.Add(self.optionpanel,0,wx.EXPAND)
+		left.Add(self.logpanel,0,wx.EXPAND)
 		left.Add((0,0),1,wx.EXPAND)
 
 		right = wx.BoxSizer(wx.VERTICAL)

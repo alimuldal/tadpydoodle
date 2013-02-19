@@ -21,18 +21,22 @@ import numpy as np
 import time
 # import os
 
+import collections
+
 class StimCanvas(GLCanvas):
 	"""
 	This is the canvas where the simulus gets drawn to 'first' (a copy of
 	what's currently being displayed can also be drawn inside an associated
 	PreviewCanvas)
 	"""
+	ndebug = 100000
 
 	def __init__(self,parent,master):
 		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
-				wx.glcanvas.WX_GL_DEPTH_SIZE,8,
-				wx.glcanvas.WX_GL_STENCIL_SIZE,8]
+				# wx.glcanvas.WX_GL_RGBA,
+				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
+				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
 
 		GLCanvas.__init__(self,parent,-1,attribList=attribList)
 
@@ -57,6 +61,12 @@ class StimCanvas(GLCanvas):
 		self.drawqueue = wx.CallLater(0,dummy)
 
 		self.done_postinit = False
+
+		# ring buffers
+		self.max_frame_time_buffer = collections.deque(maxlen=self.master.framerate_window)
+		self.frametimes = collections.deque(maxlen=self.ndebug)
+		self.alldraws = collections.deque(maxlen=self.ndebug)
+		self.stimdraws = collections.deque(maxlen=self.ndebug)
 
 		pass
 
@@ -257,9 +267,9 @@ class StimCanvas(GLCanvas):
 		# if we're previewing, we will draw to the offscreen framebuffer
 		if self.master.show_preview:
 			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
-		# else:
-		# 	# otherwise, just draw to the normal back buffer
-		# 	fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
+		else:
+			# otherwise, just draw to the normal back buffer
+			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
 
 		# the viewport is the same size as the stimulus resolution
 		xres,yres = self.master.x_resolution,self.master.y_resolution
@@ -289,6 +299,10 @@ class StimCanvas(GLCanvas):
 			self.blit_everything = True
 			self.do_refresh_everything = False
 
+			self.alldraws.append(1)
+		else:
+			self.alldraws.append(0)
+
 
 		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
 		# gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST);
@@ -303,7 +317,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnable(gl.GL_SCISSOR_TEST)
 
 		# now draw/clear calls only affect the box where the stimulus is
-		gl.glScissor( *self.stimbounds)
+		gl.glScissor( *self.stimbounds )
 
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 
@@ -320,6 +334,11 @@ class StimCanvas(GLCanvas):
 
 			self.blit_stimbox = True
 			self.do_refresh_stimbox = False
+
+			# print "draw stimulus: %s" %time.asctime()
+			self.stimdraws.append(1)
+		else:
+			self.stimdraws.append(0)
 
 		# draw the current stimulus state
 		if self.master.run_task:
@@ -339,12 +358,14 @@ class StimCanvas(GLCanvas):
 
 			gl.glScissor( *self.photobounds )
 
+			# set our clear color according to whether the photodiode
+			# is on
 			if self.master.show_photodiode:
-				# clear the region containing the photodiode
 				gl.glClearColor(1,1,1,1)
 			else:
 				gl.glClearColor(0,0,0,0)
 
+			# clear the region containing the photodiode
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 			self.blit_photodiode = True
@@ -373,7 +394,7 @@ class StimCanvas(GLCanvas):
 				gl.glClearColor(0,0,0,0)
 				gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-				x0,y0,w,h = self.stimbounds
+				x0,y0,w,h = 0,0,xres,yres
 				fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,x0,y0,x0+w,y0+h,
 							gl.GL_COLOR_BUFFER_BIT,
 							gl.GL_NEAREST)
@@ -412,12 +433,19 @@ class StimCanvas(GLCanvas):
 		# status panel
 		now = time.time()
 		dt = now - self.currtime
-		if dt > self.slowestframe: self.slowestframe = dt
+
+		# benchmarking - store the frame time in a ring buffer
+		if self.master.log_framerate:
+			self.frametimes.append(dt)
+		# if dt > self.slowestframe: self.slowestframe = dt
+		self.max_frame_time_buffer.append(dt)
+		self.slowestframe = max(self.max_frame_time_buffer)
+
 		self.currtime = now
-		self.master.controlwindow.statuspanel.onUpdate()
+
 		if not self.drawcount % self.master.framerate_window:
 			self.drawcount = 0
-			self.slowestframe = -1
+			self.master.controlwindow.statuspanel.onUpdate()
 
 		# if we're running the display loop, queue another draw call
 		if self.master.run_loop:
@@ -441,7 +469,8 @@ class PreviewCanvas(GLCanvas):
 		# taken care of by the offscreen framebuffer. in fact, it
 		# doesn't really need to be double-buffered either. meh.
 		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
-				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
+				# wx.glcanvas.WX_GL_BUFFER_SIZE,8,
+				wx.glcanvas.WX_GL_RGBA,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
 				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
 
