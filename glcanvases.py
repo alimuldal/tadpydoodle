@@ -29,20 +29,23 @@ class StimCanvas(GLCanvas):
 	what's currently being displayed can also be drawn inside an associated
 	PreviewCanvas)
 	"""
-	ndebug = 100000
 
 	def __init__(self,parent,master):
-		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
+		# really, having this canvas double-buffered and giving it
+		# stencil and depth buffers are unncecessary if we are
+		# rendering to an offcreen framebuffer first, but I include
+		# them in case the user turns off preview mode.
+		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				# wx.glcanvas.WX_GL_RGBA,
-				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
-				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
+				wx.glcanvas.WX_GL_DEPTH_SIZE,16,
+				wx.glcanvas.WX_GL_STENCIL_SIZE,8]
 
 		GLCanvas.__init__(self,parent,-1,attribList=attribList)
 
 		self.parent = parent
 		self.master = master
-		self.slaves = []
+		self.listeners = []
 		self.Bind(wx.EVT_PAINT,self.onPaint)
 
 		self.drawcount = 0
@@ -50,11 +53,7 @@ class StimCanvas(GLCanvas):
 		self.starttime = time.time()
 		self.currtime = self.starttime
 
-		self.do_recalc_photo_bounds = True
-		self.do_recalc_stim_bounds = True
 		self.do_refresh_everything = True
-		self.do_refresh_photodiode = True
-		self.do_refresh_stimbox = True
 
 		# we do this in order that self.drawqueue.hasRun() == True
 		def dummy(): pass
@@ -64,16 +63,16 @@ class StimCanvas(GLCanvas):
 
 		# ring buffers
 		self.max_frame_time_buffer = collections.deque(maxlen=self.master.framerate_window)
-		self.frametimes = collections.deque(maxlen=self.ndebug)
-		self.alldraws = collections.deque(maxlen=self.ndebug)
-		self.stimdraws = collections.deque(maxlen=self.ndebug)
+		self.frametimes = collections.deque(maxlen=self.master.log_nframes)
+		self.alldraws = collections.deque(maxlen=self.master.log_nframes)
+		self.stimdraws = collections.deque(maxlen=self.master.log_nframes)
 
 		pass
 
 	# def set_vsync(self,state=True):
 	# 	"""
 	# 	In theory this should turn "wait for monitor vertical sync" on
-	# 	or off.
+	# 	or off. It doesn't actually seem to get it to do anything, though.
 	# 	"""
 
 	# 	if bool(glx.glXSwapIntervalSGI):
@@ -164,13 +163,13 @@ class StimCanvas(GLCanvas):
 		gl.glTexImage2D(
 			gl.GL_TEXTURE_2D,		# target
 			0,				# mipmap level
-			gl.GL_RGB32F,			# internal format
+			gl.GL_RGB,			# internal format (use any RGB format)
 			xres,				# width
 			yres,				# height
 			0,				# border
 			gl.GL_RGB,			# input data format
 			gl.GL_FLOAT,			# input data type
-			None				# input data
+			None				# input data (none until we render to the framebuffer)
 			)
 
 		# create & bind a framebuffer object
@@ -182,7 +181,7 @@ class StimCanvas(GLCanvas):
 		fbo.glBindRenderbufferEXT(fbo.GL_RENDERBUFFER,self.depthbuffer)
 		fbo.glRenderbufferStorageEXT(
 			fbo.GL_RENDERBUFFER,		# target
-			gl.GL_DEPTH24_STENCIL8,		# internal format
+			gl.GL_DEPTH24_STENCIL8,		# internal format (ATI support for combined depth/stencil?)
 			xres,				# width
 			yres				# height
 			)
@@ -199,7 +198,7 @@ class StimCanvas(GLCanvas):
 		# attach the renderbuffer to the depth component of the framebuffer
 		fbo.glFramebufferRenderbuffer(
 			fbo.GL_FRAMEBUFFER,		# target
-			fbo.GL_DEPTH_STENCIL_ATTACHMENT,# attachment
+			fbo.GL_DEPTH_STENCIL_ATTACHMENT,# attachment (ATI support for combined depth/stencil?)
 			fbo.GL_RENDERBUFFER,		# renderbuffer target
 			self.depthbuffer 		# renderbuffer ID
 			)
@@ -427,7 +426,7 @@ class StimCanvas(GLCanvas):
 		# copying overhead
 		if self.master.show_preview:
 			if not self.drawcount % self.master.preview_frequency:
-				[slave.onDraw() for slave in self.slaves]
+				[listener.onDraw() for listener in self.listeners]
 
 		# keep a running minimum of the framerate and update the task
 		# status panel
@@ -468,9 +467,9 @@ class PreviewCanvas(GLCanvas):
 		# we don't need a depth or stencil buffer, since this is all
 		# taken care of by the offscreen framebuffer. in fact, it
 		# doesn't really need to be double-buffered either. meh.
-		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
-				# wx.glcanvas.WX_GL_BUFFER_SIZE,8,
-				wx.glcanvas.WX_GL_RGBA,
+		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
+				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
+				# wx.glcanvas.WX_GL_RGBA,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
 				wx.glcanvas.WX_GL_STENCIL_SIZE,0]
 
@@ -507,10 +506,10 @@ class PreviewCanvas(GLCanvas):
 	# 		self.detach()
 
 	def attach(self):
-		self.stimcanvas.slaves.append(self)
+		self.stimcanvas.listeners.append(self)
 
 	def detach(self):
-		self.stimcanvas.slaves.remove(self)
+		self.stimcanvas.listeners.remove(self)
 
 	def postinit(self):
 		""" called in onPaint if self.done_postinit == False """

@@ -2,11 +2,10 @@ import wx
 import multiprocessing
 from ConfigParser import SafeConfigParser
 import os,copy,imp,inspect
-# import warnings
+import time
 
 import glcanvases as glc; reload(glc)
 import gui_elements as gui; reload(gui)
-
 
 # class DummyTask(object):
 # 	scan_hz = 5.
@@ -14,17 +13,19 @@ import gui_elements as gui; reload(gui)
 # 	dt = 89.13
 # 	currentframe = 445
 
+__version__ = "0.9a"
+
 class AppThread(multiprocessing.Process):
 
 	# default configuration
 	template = {
 	# [section]	variable = value
-	'window':	{'x_resolution':1024,'y_resolution':768,'on_top':True,},
-	'photodiode':	{'show_photodiode':True,'p_xpos':380,'p_ypos':230 ,'p_scale':45},
-	'crosshairs':	{'show_crosshairs':True,'c_xpos':375,'c_ypos':710,'c_scale':190},
-	'stimulus':	{'show_preview':True,'preview_frequency':5,'fullscreen':False,
-			'log_framerate':True,'log_nframes':10000,'run_loop':True,
-			'wait_for_vsync':False,'min_delta_t':1,'framerate_window':100}
+	'window':	{'x_resolution':800,'y_resolution':600,'fullscreen':False,'on_top':True},
+	'photodiode':	{'show_photodiode':True,'p_xpos':300.,'p_ypos':100. ,'p_scale':20.},
+	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,'c_scale':145.},
+	'stimulus':	{'show_preview':True,'preview_frequency':5,'log_framerate':False,
+			'log_nframes':10000,'run_loop':True,'wait_for_vsync':False,'min_delta_t':1,
+			'framerate_window':100}
 			}
 
 	# configuration file
@@ -38,21 +39,36 @@ class AppThread(multiprocessing.Process):
 
 
 	def run(self):
+		print "Starting TadPyDoodle v%s" %__version__
 		app = wx.PySimpleApp()
+
+		print "Loading configuration..."
 		self.loadConfig()
 
-		# setting this environment variable forces vsync on/off
+		# setting this environment variable forces vsync on/off (on my
+		# Acer laptop that runs Optimus...)
 		os.environ.update({'vblank_mode':str(int(self.wait_for_vsync))})
 
+		print "Initialising stimulus window..."
+		# we need to pause here, or for some reason the thread stalls
+		# when creating the stimulus frame (but only on the
+		# workstation?!)
+		time.sleep(0.1)
 		self.stimframe = wx.Frame(None,-1,size=(self.x_resolution,self.y_resolution),title='Stimulus window')
 		self.stimframe.Bind(wx.EVT_CLOSE, self.onClose)
 		self.stimcanvas = glc.StimCanvas(self.stimframe,self)
 		self.stimframe.Show()
+
+		print "Loading tasks..."
 		self.loadTasks()
+
+		print "Initialising controls ..."
 		self.controlwindow = gui.ControlWindow(None,self,title='TadPyDoodle')
 		self.controlwindow.Bind(wx.EVT_CLOSE, self.onClose)
 		self.controlwindow.Show()
 		self.controlwindow.SetFocus()
+
+		print "Done"
 		app.MainLoop()
 
 	def resetConfig(self,event=None):
@@ -108,13 +124,12 @@ class AppThread(multiprocessing.Process):
 			for option,value in subsect.iteritems():
 				self.__setattr__(option,value)
 
-		# force a re-draw of the canvas if it exists - the display
-		# config may have changed
+		# force a re-draw of the canvas if it already exists - the
+		# display config may have changed
 		if hasattr(self,'stimcanvas'):
 			self.stimcanvas.recalc_stim_bounds()
 			self.stimcanvas.recalc_photo_bounds()
 			self.stimcanvas.do_refresh_everything = True
-
 
 	def saveConfig(self,event=None):
 		"""
@@ -136,7 +151,6 @@ class AppThread(multiprocessing.Process):
 		path = self.configpath.replace('~',os.getenv('HOME'))
 		parser.write(open(path,'w'))
 
-
 	def loadTasks(self,event=None):
 		"""
 		Recursively compile and  load all tasks in 'self.taskdir' and
@@ -144,6 +158,10 @@ class AppThread(multiprocessing.Process):
 		each must have the '.taskname' attribute in order to be
 		recognised. Duplicate tasknames are skipped with a warning.
 		"""
+
+		def istask(obj):
+			return hasattr(obj,'taskname')
+
 		names = []
 		objects = []
 		for relpath,_,fullnames in os.walk(self.taskdir):
@@ -152,12 +170,12 @@ class AppThread(multiprocessing.Process):
 				if ext.lower() == '.py':
 					# print os.path.join(relpath,fullname)
 					mod = imp.load_source(fname,os.path.join(relpath,fullname))
+				# # we don't want to do this if we've made changes to the source files
 				# elif ext.lower() == '.pyc':
 				# 	mod = imp.load_compiled(fname,os.path.join(relpath,fullname))
 				else:
 					continue
 
-				def istask(obj): return hasattr(obj,'taskname')
 				for name,obj in inspect.getmembers(mod,predicate=istask):
 
 					if obj.taskname in names:
