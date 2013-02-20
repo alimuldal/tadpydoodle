@@ -13,7 +13,7 @@ import gui_elements as gui; reload(gui)
 # 	dt = 89.13
 # 	currentframe = 445
 
-__version__ = "0.9a"
+__version__ = "1.0"
 
 class AppThread(multiprocessing.Process):
 
