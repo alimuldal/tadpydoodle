@@ -149,6 +149,10 @@ class Task(object):
 						"theoretical and actual stimulus times:"
 					print np.abs(self.actualstimtimes - self.theoreticalstimtimes)
 
+					if not self.canvas.master.auto_start_tasks:
+						self.canvas.master.controlwindow.playlistpanel.onRunTask()
+					self.canvas.master.controlwindow.playlistpanel.Next()
+
 			self.dt = dt
 
 ################################################################################

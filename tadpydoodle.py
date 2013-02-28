@@ -13,7 +13,7 @@ import gui_elements as gui; reload(gui)
 # 	dt = 89.13
 # 	currentframe = 445
 
-__version__ = "1.0"
+__version__ = "1.1"
 
 class AppThread(multiprocessing.Process):
 
@@ -25,11 +25,14 @@ class AppThread(multiprocessing.Process):
 	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,'c_scale':145.},
 	'stimulus':	{'show_preview':True,'preview_frequency':5,'log_framerate':False,
 			'log_nframes':10000,'run_loop':True,'wait_for_vsync':False,'min_delta_t':1,
-			'framerate_window':100}
+			'framerate_window':100},
+	'playlist':	{'playlist_directory':'playlists','repeat_playlist':True,
+			'auto_start_tasks':False}
 			}
 
 	# configuration file
-	configpath = '~/.tadpydoodlerc'
+	configroot = '~/.tadpydoodle'
+	configfile = 'tadpydoodlerc'
 
 	# tasks
 	taskdir = './tasks'
@@ -83,14 +86,15 @@ class AppThread(multiprocessing.Process):
 
 	def loadConfig(self,event=None):
 		"""
-		Load configuration from a '.tadpydoodlerc' file specified in
-		'self.configpath'
+		Load configuration from a 'tadpydoodlerc' file specified in
+		'<self.configroot>/<self.configfile>'
 		"""
 
 		# create a configparser instance
 		parser = SafeConfigParser()
 
-		path = self.configpath.replace('~',os.getenv('HOME'))
+		root = self.configroot.replace('~',os.getenv('HOME'))
+		path = os.path.join(root,self.configfile)
 		try:
 			# try and read read the config file
 			parser.readfp(open(path,'r'))
@@ -133,8 +137,8 @@ class AppThread(multiprocessing.Process):
 
 	def saveConfig(self,event=None):
 		"""
-		Save the current configuration to a '.tadpydoodlerc' file
-		specified in 'self.configpath'
+		Save the current configuration to a 'tadpydoodlerc' file
+		specified in '<self.configroot>/<self.configfile>'
 		"""
 		parser = SafeConfigParser()
 		template = self.template
@@ -148,7 +152,10 @@ class AppThread(multiprocessing.Process):
 				parser.set(sect,option,str(newval))
 
 		# write the new configuration out
-		path = self.configpath.replace('~',os.getenv('HOME'))
+		root = self.configroot.replace('~',os.getenv('HOME'))
+		if not os.path.exists(root):
+			os.makedirs(root)
+		path = os.path.join(root,self.configfile)
 		parser.write(open(path,'w'))
 
 	def loadTasks(self,event=None):

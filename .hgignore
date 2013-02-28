@@ -15,6 +15,7 @@ boy
 *.log
 tmp/*
 *.orig
+*.tadplay
 
 syntax: regexp
 

@@ -1,4 +1,7 @@
 import wx
+import os
+from wx.lib.mixins import listctrl as listmix
+import cPickle
 import glcanvases as glc; reload(glc)
 
 def seconds2human(secs):
@@ -50,54 +53,188 @@ class AttributeRef(object):
 	def set(self,value):
 		self.master.__setattr__(self.attrname,value)
 
-class TaskPanel(wx.Panel):
-	def __init__(self,parent,master):
-		super(TaskPanel,self).__init__(parent)
+class CheckListCtrl(wx.ListCtrl, listmix.CheckListCtrlMixin, listmix.ListCtrlAutoWidthMixin):
+	def __init__(self, *args, **kwargs):
+		wx.ListCtrl.__init__(self, *args, **kwargs)
+		listmix.CheckListCtrlMixin.__init__(self)
+		listmix.ListCtrlAutoWidthMixin.__init__(self)
+		self.setResizeColumn(3)
+		self.current_selection = 0
+
+	def SetCurrent(self,index):
+		self.current_selection = index
+		self.update_selections()
+
+	def update_selections(self):
+		for ii in xrange(self.GetItemCount()):
+			self.SetItemImage(ii,ii==self.current_selection)
+
+class PlaylistPanel(wx.Panel):
+
+	def __init__(self,parent,master,**kwargs):
+		super(PlaylistPanel,self).__init__(parent,**kwargs)
 
 		self.master = master
 		self.parent = parent
-		taskdict = master.taskdict
 
-		statbox = wx.StaticBox(self,wx.VERTICAL,label='Tasks')
+		# --------------------------------------------------------------
+		# task box
+		taskbox = wx.StaticBox(self,wx.VERTICAL,label='Tasks')
 
+		# a tree menu of available tasks
+		self.task_tree = wx.TreeCtrl(self,-1,style=wx.TR_DEFAULT_STYLE|wx.TR_MULTIPLE|wx.TR_HIDE_ROOT)
+		self.populate_tree()
+		self.task_tree.Bind(wx.EVT_TREE_SEL_CHANGING,self.onSelectChange)
+		self.task_tree.Bind(wx.EVT_LEFT_DCLICK,self.onTreeDoubleClick)
+
+		# playlist controls
+		self.startbutton = wx.ToggleButton(self,-1)
+		self.startbutton.start = ('Start task',wx.Colour(100,255,100,255))
+		self.startbutton.stop = ('Stop task',wx.Colour(255,100,100,255))
 		ref = AttributeRef(self.master,'run_task')
-		startbutton = wx.ToggleButton(self,-1)
-		startbutton.start = ('Start task',wx.Colour(100,255,100,255))
-		startbutton.stop = ('Stop task',wx.Colour(255,100,100,255))
 		if ref.get():
-			l,c = startbutton.stop
+			l,c = self.startbutton.stop
 		else:
-			l,c = startbutton.start
-		startbutton.SetValue(not ref.get())
-		startbutton.SetLabel(l)
-		startbutton.SetBackgroundColour(c)
-		startbutton.ref = ref
-		startbutton.Bind(wx.EVT_TOGGLEBUTTON,self.onRunTask)
-		self.startbutton = startbutton
+			l,c = self.startbutton.start
+		self.startbutton.SetLabel(l)
+		self.startbutton.SetBackgroundColour(c)
+		self.startbutton.SetValue(not ref.get())
+		self.startbutton.ref = ref
+		self.startbutton.Bind(wx.EVT_TOGGLEBUTTON,self.onRunTask)
+		self.nextbutton = wx.Button(self,-1,label='Next')
+		self.nextbutton.Bind(wx.EVT_BUTTON,self.Next)
+		self.prevbutton = wx.Button(self,-1,label='Previous')
+		self.prevbutton.Bind(wx.EVT_BUTTON,self.Previous)
 
-		reloadbutton = wx.Button(self,-1,label='Reload tasks')
-		reloadbutton.Bind(wx.EVT_BUTTON,self.onReload)
-		self.reloadbutton = reloadbutton
+		self.importbutton = wx.Button(self,-1,label='Re-import tasks')
+		self.importbutton.Bind(wx.EVT_BUTTON,self.onReload)
 
-		ref = AttributeRef(self.master,'current_task')
-		choicelist = taskdict.keys()
-		choicelist.sort()
-		taskmenu = wx.ComboBox(self,-1,value='- Select a task -',choices=choicelist)
-		taskmenu.ref = ref
-		taskmenu.Bind(wx.EVT_COMBOBOX,self.onChooseTask)
-		self.taskmenu = taskmenu
+		top_sizer = wx.BoxSizer(wx.HORIZONTAL)
+		top_sizer.AddMany([(button,1,wx.EXPAND) for button in [self.prevbutton,self.startbutton,self.nextbutton]])
 
-		hsizer = wx.BoxSizer(wx.HORIZONTAL)
-		hsizer.AddMany((item,1,wx.EXPAND) for item in [startbutton,reloadbutton])
+		taskbox_sizer = wx.StaticBoxSizer(taskbox,wx.VERTICAL)
+		taskbox_sizer.Add(top_sizer,0,wx.EXPAND|wx.ALL,5)
+		taskbox_sizer.Add(self.task_tree,1,wx.EXPAND|wx.LEFT|wx.RIGHT,5)
+		taskbox_sizer.Add(self.importbutton,0,wx.EXPAND|wx.ALL,5)
 
-		sizer = wx.StaticBoxSizer(statbox,wx.VERTICAL)
-		sizer.AddMany([(item,0,wx.EXPAND|wx.ALL,5) for item in [hsizer,taskmenu]])
+		# --------------------------------------------------------------
+		# playlist box
 
-		self.SetSizerAndFit(sizer)
+		playbox = wx.StaticBox(self,wx.VERTICAL,label='Playlist')
+
+		# a checklistctrl that contains the playlist
+		self.playlist = CheckListCtrl(self,-1,style=wx.LC_SINGLE_SEL|wx.LC_REPORT)
+		self.playlist.InsertColumn(0,'')
+		self.playlist.InsertColumn(1,'Name')
+		self.playlist.InsertColumn(2,'Subclass')
+		self.items = []
+		self.playlist.Arrange()
+		# bind to CheckListCtrl 'event'
+		self.playlist.OnCheckItem = self.on_check
+
+		# playlist editing buttons and checkbox controls
+		self.loadbutton = wx.Button(self,-1,label='Load playlist')
+		self.loadbutton.Bind(wx.EVT_BUTTON,self.Load)
+		self.savebutton = wx.Button(self,-1,label='Save playlist')
+		self.savebutton.Bind(wx.EVT_BUTTON,self.Save)
+		self.loopcheck = wx.CheckBox(self,-1,label='Repeat playlist')
+		ref = AttributeRef(self.master,'repeat_playlist')
+		self.loopcheck.SetValue(ref.get())
+		self.loopcheck.ref = ref
+		self.loopcheck.Bind(wx.EVT_CHECKBOX,self.on_loop_check)
+		self.autocheck = wx.CheckBox(self,-1,label='Auto start')
+		ref = AttributeRef(self.master,'auto_start_tasks')
+		self.autocheck.SetValue(ref.get())
+		self.autocheck.ref = ref
+		self.autocheck.Bind(wx.EVT_CHECKBOX,self.on_auto_check)
+
+		self.upbutton = wx.Button(self,-1,label='Move up')
+		self.upbutton.Bind(wx.EVT_BUTTON,self.Up)
+		self.downbutton = wx.Button(self,-1,label='Move down')
+		self.downbutton.Bind(wx.EVT_BUTTON,self.Down)
+		self.rembutton = wx.Button(self,-1,label='Remove task')
+		self.rembutton.Bind(wx.EVT_BUTTON,self.Remove)
+
+
+		edit_sizer1 = wx.BoxSizer(wx.HORIZONTAL)
+		buttons = [self.loadbutton,self.savebutton]
+		edit_sizer1.AddMany([(button,1,wx.EXPAND) for button in buttons])
+
+		edit_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
+		buttons = [self.loopcheck,self.autocheck]
+		edit_sizer2.AddMany([(button,1,wx.EXPAND) for button in buttons])
+
+		edit_sizer3 = wx.BoxSizer(wx.HORIZONTAL)
+		buttons = [self.upbutton,self.downbutton,self.rembutton]
+		edit_sizer3.AddMany([(button,1,wx.EXPAND) for button in buttons])
+
+		playbox_sizer = wx.StaticBoxSizer(playbox,wx.VERTICAL)
+		playbox_sizer.Add(edit_sizer1,0,wx.EXPAND|wx.ALL,5)
+		playbox_sizer.Add(self.playlist,1,wx.EXPAND|wx.LEFT|wx.RIGHT,5)
+		playbox_sizer.Add(edit_sizer2,0,wx.EXPAND)
+		playbox_sizer.Add(edit_sizer3,0,wx.EXPAND|wx.ALL,5)
+
+
+		# self.playlist.Bind(wx.EVT_LIST_ITEM_ACTIVATED,self.onPlaylistActivated)
+
+		master_sizer = wx.BoxSizer(wx.VERTICAL)
+		master_sizer.Add(taskbox_sizer,1,wx.EXPAND)
+		master_sizer.Add((0,0),0,wx.EXPAND|wx.TOP|wx.BOTTOM,10)
+		master_sizer.Add(playbox_sizer,1,wx.EXPAND)
+
+		self.SetSizerAndFit(master_sizer)
+
+	#-----------------------------------------------------------------------
+	# tree
+
+	def populate_tree(self):
+		taskdict = self.master.taskdict
+
+		# clear any existing items from the tree
+		self.task_tree.DeleteAllItems()
+
+		# we hide this
+		root = self.task_tree.AddRoot('tasks')
+
+		# arrange the task names according to their 'subclasses'. we use a dict
+		# to keep track of the existing branches.
+		hierarchy = {}
+		for name,obj in taskdict.iteritems():
+
+			# if it's a new subclass, create a new tree branch
+			if not hierarchy.has_key(obj.subclass):
+				newbranch = self.task_tree.AppendItem(root,obj.subclass)
+				hierarchy.update({obj.subclass:newbranch})
+
+			# add the task name to an existing branch
+			self.task_tree.AppendItem(hierarchy[obj.subclass],name)
+
+		# sort each tree branch recursively
+		for item in walk_branches(self.task_tree,root):
+			self.task_tree.SortChildren(item)
+
+	def onTreeDoubleClick(self,event):
+		point = event.GetPosition()
+		item = self.task_tree.HitTest(point)[0]
+		if not self.task_tree.ItemHasChildren(item):
+			taskname = self.task_tree.GetItemText(item)
+			if taskname:
+				task = self.master.taskdict[taskname]
+				self.Append(task)
+
+	def onSelectChange(self,event=None):
+		tree = event.GetEventObject()
+		newsel = event.GetItem()
+		# only allowed to select tasks, not subclasses
+		if tree.ItemHasChildren(newsel):
+			event.Veto()
+
+	#-----------------------------------------------------------------------
+	# playlist
 
 	def onRunTask(self,event=False):
 		obj = self.startbutton
-		if self.master.current_task:
+		if self.master.current_task is not None:
 			running = obj.ref.get()
 			# NB the value of toggle changes AFTER this callback executes!
 			if running:
@@ -127,26 +264,179 @@ class TaskPanel(wx.Panel):
 		if self.master.run_task:
 			self.onRunTask()
 		self.master.loadTasks()
-		choicelist = self.master.taskdict.keys()
-		choicelist.sort()
-		self.taskmenu.SetValue('- Select a task -')
-		self.taskmenu.SetItems(choicelist)
+		self.populate_tree()
 
-	def onChooseTask(self,event):
-		if self.master.run_task:
-			self.onRunTask()
-			# self.master.run_task = False
-			# l,c = self.startbutton.start
-			# self.startbutton.SetValue(False)
-			# self.startbutton.SetLabel(l)
-			# self.startbutton.SetBackgroundColour(c)
-		taskname = event.GetString()
-		task_class = self.master.taskdict[taskname]
-		self.master.current_task = task_class(self.master.stimcanvas)
+	def Append(self,task):
+		index = self.playlist.Append(['',task.taskname,task.subclass])
+		self.items.append(task)
+		if index == 0:
+			self.on_check(index)
+		auto_resize_cols(self.playlist)
+
+	def Next(self,event=None):
+		if not len(self.items): return
+		index = self.playlist.current_selection
+		n_items = self.playlist.GetItemCount()
+		if (index + 1) == n_items:
+			if self.master.repeat_playlist:
+				index = 0
+		else:
+			index += 1
+		self.on_check(index)
+
+	def Previous(self,event=None):
+		if not len(self.items): return
+		index = self.playlist.current_selection
+		n_items = self.playlist.GetItemCount()
+		if index == 0:
+			if self.master.repeat_playlist:
+				index = (n_items - 1)
+		else:
+			index -= 1
+		self.on_check(index)
+
+	def Remove(self,event=None):
+		if not len(self.items): return
+		index = self.playlist.GetFirstSelected()
+		playing = self.playlist.current_selection
+		if index == playing:
+			playing = max(0,playing-1)
+		elif index < playing:
+			playing -= 1
+
+		self.playlist.DeleteItem(index)
+		self.items.pop(index)
+		if len(self.items):
+			self.playlist.Select(0)
+			self.on_check(playing)
+		else:
+			self.master.current_task = None
+
+	def Up(self,event=None):
+		if not len(self.items): return
+		old = self.playlist.GetFirstSelected()
+		n_items = self.playlist.GetItemCount()
+		if old == 0:
+			if self.master.repeat_playlist:
+				new = (n_items - 1)
+		else:
+			new = old - 1
+
+		playing = self.playlist.current_selection
+		if playing == old:
+			self.playlist.SetCurrent(new)
+		elif playing == new:
+			self.playlist.SetCurrent(old)
+
+
+		self.items[old],self.items[new] = self.items[new],self.items[old]
+		self.redraw_playlist()
+		self.playlist.Select(new)
+		print self.master.current_task.taskname
+
+	def Down(self,event=None):
+		if not len(self.items): return
+		old = self.playlist.GetFirstSelected()
+		n_items = self.playlist.GetItemCount()
+		if (old + 1) == n_items:
+			if self.master.repeat_playlist:
+				new = 0
+		else:
+			new = old + 1
+
+		playing = self.playlist.current_selection
+		if playing == old:
+			self.playlist.SetCurrent(new)
+		elif playing == new:
+			self.playlist.SetCurrent(old)
+
+		self.items[old],self.items[new] = self.items[new],self.items[old]
+		self.redraw_playlist()
+		self.playlist.Select(new)
+		print self.master.current_task.taskname
+
+	def Load(self,event):
+		rootdir = self.master.configroot.replace('~',os.getenv('HOME'))
+		playlist_dir = os.path.join(rootdir,self.master.playlist_directory)
+		if not os.path.exists(playlist_dir):
+			os.makedirs(playlist_dir)
+
+		dialog = wx.FileDialog(	None,
+					message='Load playlist from path',
+					defaultDir=playlist_dir,
+					wildcard='*.tadplay',
+					style=wx.OPEN
+					)
+		if dialog.ShowModal() == wx.ID_OK:
+			path = dialog.GetPath()
+			tadplay = open(path,'r')
+			tasks = cPickle.load(tadplay)
+			self.items = tasks
+			self.playlist.current_selection = 0
+			self.redraw_playlist()
+			tadplay.close()
+
+	def Save(self,event=None):
+		rootdir = self.master.configroot.replace('~',os.getenv('HOME'))
+		playlist_dir = os.path.join(rootdir,self.master.playlist_directory)
+		if not os.path.exists(playlist_dir):
+			os.makedirs(playlist_dir)
+
+		dialog = wx.FileDialog(	None,
+					message='Save playlist to path',
+					defaultDir=playlist_dir,
+					wildcard='*.tadplay',
+					style=wx.SAVE
+					)
+		if dialog.ShowModal() == wx.ID_OK:
+			path = dialog.GetPath()
+			if path[-8:] != '.tadplay':
+				path += '.tadplay'
+			tadplay = open(path,'w')
+			cPickle.dump(self.items,tadplay)
+			tadplay.close()
+
+	def redraw_playlist(self):
+		self.playlist.DeleteAllItems()
+		for task in self.items:
+			self.playlist.Append(['',task.taskname,task.subclass])
+		self.playlist.update_selections()
+
+	def on_check(self,index,flag=True):
+		if flag:
+			task = self.items[index]
+			self.set_current_task(task)
+		self.playlist.SetCurrent(index)
+
+	def on_loop_check(self,event=None):
+		obj = event.GetEventObject()
+		obj.ref.set(event.GetSelection())
+
+	def on_auto_check(self,event=None):
+		obj = event.GetEventObject()
+		obj.ref.set(event.GetSelection())
+
+	def set_current_task(self,task):
+		self.master.current_task = task(self.master.stimcanvas)
 		self.parent.statuspanel.setTask()
-
 		# force a full re-draw
 		self.master.stimcanvas.do_refresh_everything = True
+		# print "playing current task: %s" %task.taskname
+
+def auto_resize_cols(listctrl):
+	ncols = listctrl.GetColumnCount()
+	[listctrl.SetColumnWidth(ii,wx.LIST_AUTOSIZE) for ii in xrange(ncols)]
+
+def walk_branches(tree,root,includeroot=True):
+	""" a generator that recursively yields child nodes of a wx.TreeCtrl """
+	if includeroot:
+		yield root
+	item, cookie = tree.GetFirstChild(root)
+	while item.IsOk():
+		yield item
+		if tree.ItemHasChildren(item):
+			walk_branches(tree,item)
+		item,cookie = tree.GetNextChild(root,cookie)
 
 class StatusPanel(wx.Panel):
 
@@ -488,7 +778,7 @@ class LogPanel(wx.Panel):
 
 		statbox = wx.StaticBox(self,wx.VERTICAL,label='Logging options')
 
-		self.logging_on = wx.CheckBox(self,-1,label='Enable')
+		self.logging_on = wx.CheckBox(self,-1,label='Enable frame logging')
 		self.logging_on.Bind(wx.EVT_CHECKBOX,self.onLogging)
 		self.logging_on.SetValue(self.master.log_framerate)
 
@@ -687,7 +977,8 @@ class ControlWindow(wx.Frame):
 		self.master = master
 
 		self.previewcanvas = glc.PreviewCanvas(self,self.master.stimcanvas,size=(480,640))
-		self.taskpanel = TaskPanel(self,master)
+		# self.taskpanel = TaskPanel(self,master)
+		self.playlistpanel = PlaylistPanel(self,master)
 		self.statuspanel = StatusPanel(self,master)
 		self.adjustpanel = AdjustPanel(self,master)
 		self.optionpanel = OptionPanel(self,master)
@@ -695,7 +986,7 @@ class ControlWindow(wx.Frame):
 
 
 		left = wx.BoxSizer(wx.VERTICAL)
-		left.Add(self.taskpanel,0,wx.EXPAND)
+		# left.Add(self.taskpanel,0,wx.EXPAND)
 		left.Add((0,0),1,wx.EXPAND)
 		left.Add(self.adjustpanel,0,wx.EXPAND)
 		left.Add((0,0),1,wx.EXPAND)
@@ -703,13 +994,17 @@ class ControlWindow(wx.Frame):
 		left.Add(self.logpanel,0,wx.EXPAND)
 		left.Add((0,0),1,wx.EXPAND)
 
+		middle = wx.BoxSizer(wx.VERTICAL)
+		middle.Add(self.previewcanvas,1,wx.SHAPED|wx.ALL|wx.ALIGN_TOP|wx.ALIGN_CENTER_HORIZONTAL ,border=2)
+		middle.Add(self.statuspanel,0,wx.EXPAND)
+
 		right = wx.BoxSizer(wx.VERTICAL)
-		right.Add(self.statuspanel,0,wx.EXPAND)
-		right.Add(self.previewcanvas,1,wx.SHAPED|wx.ALL|wx.ALIGN_TOP|wx.ALIGN_CENTER_HORIZONTAL ,border=2)
+		right.Add(self.playlistpanel,1,wx.EXPAND)
 
 		main = wx.BoxSizer(wx.HORIZONTAL)
+		main.Add(right,0,wx.EXPAND)
+		main.Add(middle,1,wx.EXPAND)
 		main.Add(left,0,wx.EXPAND)
-		main.Add(right,1,wx.EXPAND)
 
 		self.SetSizerAndFit(main)
 
@@ -725,7 +1020,7 @@ class ControlWindow(wx.Frame):
 		self.Bind(wx.EVT_MENU,self.master.onClose,id=eventIDs['exit'])
 		self.Bind(wx.EVT_MENU,self.master.saveConfig,id=eventIDs['save'])
 		self.Bind(wx.EVT_MENU,self.master.loadConfig,id=eventIDs['load'])
-		self.Bind(wx.EVT_MENU,self.taskpanel.onRunTask,id=eventIDs['run'])
+		self.Bind(wx.EVT_MENU,self.playlistpanel.onRunTask,id=eventIDs['run'])
 		self.Bind(wx.EVT_MENU,self.adjustpanel.keyboardNudge,id=eventIDs['nudge'])
 		self.Bind(wx.EVT_MENU,self.optionpanel.onDisplayloop,id=eventIDs['display'])
 		self.Bind(wx.EVT_MENU,self.optionpanel.onFullscreen,id=eventIDs['full'])
