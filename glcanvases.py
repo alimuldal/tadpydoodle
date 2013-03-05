@@ -69,40 +69,33 @@ class StimCanvas(GLCanvas):
 
 		pass
 
-	# def set_vsync(self,state=True):
-	# 	"""
-	# 	In theory this should turn "wait for monitor vertical sync" on
-	# 	or off. It doesn't actually seem to get it to do anything, though.
-	# 	"""
-
-	# 	if bool(glx.glXSwapIntervalSGI):
-	# 		glx.glXSwapIntervalSGI(state)
-	# 		print "SGI vsync: %s" %str(state)
-	# 	elif bool(glx.glXSwapIntervalMESA):
-	# 		glx.glXSwapIntervalMESA(state)
-	# 		print "MESA vsync: %s" %str(state)
-	# 	else:
-	# 		print "Can't set vsync"
-
 	def postinit(self):
 		"""
-		This is called at the start of onPaint if not self.done_predraw.
-		We have to do this initialisation AFTER the canvas has been
-		created because it requires an OpenGL context!
+		This is called at the start of onPaint if (not
+		self.done_predraw). We have to do this initialisation AFTER the
+		canvas has been created because it requires an OpenGL context!
 		"""
 		self.SetCurrent()
 		self.makedisplaylists()
 		self.initFBO()
+
+		# clear values
+		gl.glClearStencil(0)
+		gl.glClearDepth(0)
+
+		# hinting, probably probably ignored by implementation
+		gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
+		gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST)
 
 		pass
 
 	def makedisplaylists(self):
 		""" Compile display list for the crosshairs """
 
-		# display list for the crosshairs
+		# display list for the stimulus box
 		#---------------------------------------------------------------
-		crosshairlist = gl.glGenLists(1)
-		gl.glNewList(crosshairlist, gl.GL_COMPILE)
+		stimboxlist = gl.glGenLists(1)
+		gl.glNewList(stimboxlist, gl.GL_COMPILE)
 
 		gl.glColor4f(1.,0.,0.,1.)
 
@@ -114,6 +107,16 @@ class StimCanvas(GLCanvas):
 		gl.glVertex2f( -1.0, -1.0 )
 		gl.glVertex2f( -1.0,  1.0 )	
 		gl.glEnd()
+
+		gl.glEndList()
+		#---------------------------------------------------------------
+
+		# display list for the crosshairs
+		#---------------------------------------------------------------
+		crosshairlist = gl.glGenLists(1)
+		gl.glNewList(crosshairlist, gl.GL_COMPILE)
+
+		gl.glColor4f(1.,0.,0.,1.)
 
 		# the circle
 		radius = 0.5
@@ -133,6 +136,7 @@ class StimCanvas(GLCanvas):
 		gl.glEndList()
 		#---------------------------------------------------------------
 
+  		self.stimboxlist = stimboxlist
   		self.crosshairlist = crosshairlist
 
   		pass
@@ -217,12 +221,19 @@ class StimCanvas(GLCanvas):
 		recalculate the bounding boxes for the stimulus area
 		"""
 
+		try:
+			aspect = self.master.current_task.area_aspect
+		except (AttributeError):
+			aspect = 1.
+
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 		self.stimbounds = ( 	int(np.floor(x-(scale+3))),
-			 		int(np.floor(y-(scale+3))),
+			 		int(np.floor(y-(aspect*scale+3))),
 			 		int(np.ceil(2*(scale+3))),
-			 		int(np.ceil(2*(scale+3)))
+			 		int(np.ceil(2*(aspect*scale+3)))
 			 		)
+
+		self.stimbox_aspect = aspect
 
 	def recalc_photo_bounds(self):
 
@@ -302,10 +313,6 @@ class StimCanvas(GLCanvas):
 		else:
 			self.alldraws.append(0)
 
-
-		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
-		# gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST);
-
 		#---------------------------------------------------------------
 		# NB - we need to draw from back to front in order for depth
 		# testing to work correctly!
@@ -329,7 +336,7 @@ class StimCanvas(GLCanvas):
 			if self.master.current_task:
 				gl.glClearColor(*self.master.current_task.background_color)
 
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
 			# self.blit_stimbox = True
 			self.do_refresh_stimbox = False
@@ -341,16 +348,23 @@ class StimCanvas(GLCanvas):
 
 		# draw the current stimulus state
 		if self.master.run_task:
+			gl.glPushMatrix()
 			gl.glTranslate(x, y, 0)
 			gl.glScale(*(scale,)*3)
 			self.master.current_task.display()
+			gl.glPopMatrix()
 
 		# draw the crosshairs
 		if self.master.show_crosshairs:
-			gl.glLoadIdentity()
+			gl.glPushMatrix()
 			gl.glTranslate(x, y, -127)
+
 			gl.glScale(*(scale,)*3)
 			gl.glCallList(self.crosshairlist)
+
+			gl.glScale(1,self.stimbox_aspect,1)
+			gl.glCallList(self.stimboxlist)
+			gl.glPopMatrix()
 
 		# draw the photodiode
 		if self.do_refresh_photodiode:
@@ -402,6 +416,8 @@ class StimCanvas(GLCanvas):
 						x0,y0,x0+w,y0+h,
 						gl.GL_COLOR_BUFFER_BIT,
 						gl.GL_NEAREST)
+
+		check_for_gl_error()
 
 		# swap the front and back buffers so that the new frame is now
 		# visible in the canvas
@@ -639,3 +655,23 @@ class PreviewCanvas(GLCanvas):
 
 		# force a re-draw of the whole scene
 		self.stimcanvas.do_refresh_everything = True
+
+def check_for_gl_error():
+	"""
+	for debugging purposes, check to see if OpenGL threw an error, and print
+	the relevant error descriptor
+	"""
+	errorcodes = [	'GL_INVALID_ENUM',
+			'GL_INVALID_VALUE',
+			'GL_INVALID_OPERATION',
+			'GL_INVALID_FRAMEBUFFER_OPERATION',
+			'GL_OUT_OF_MEMORY',
+			'GL_STACK_UNDERFLOW',
+			'GL_STACK_OVERFLOW']
+	error = gl.glGetError()
+
+	if error:
+		for state in errorcodes:
+
+			if error == eval('gl.'+state):
+				print state

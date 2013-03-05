@@ -11,28 +11,22 @@ def seconds2human(secs):
 def get_onsets_and_offsets(boolvec):
 	""" get the onset and offset indices for a boolean vector"""
 	import numpy as np
-
 	if not np.any(boolvec):
 		return np.array([]),np.array([])
-	
 	diff = np.diff(boolvec)
-
 	if not np.any(diff > 0):
 		onsets = np.array([0])
 	else:
 		onsets = np.where(diff > 0)[0]
 		if boolvec[0]:
 			onsets = np.concatenate((np.atleast_1d(0),np.atleast_1d(onsets)))
-
 	if not np.any(diff < 0):
 		offsets = np.array([0])
 	else:
 		offsets = np.where(diff < 0)[0]
 		if boolvec[-1]:
 			offsets = np.concatenate((np.atleast_1d(offsets),np.atleast_1d(len(boolvec)-1)))
-
 	assert len(onsets) == len(offsets)
-
 	return onsets,offsets
 
 def window_iter(X,win):
@@ -133,9 +127,11 @@ class PlaylistPanel(wx.Panel):
 		self.playlist.OnCheckItem = self.on_check
 
 		# playlist editing buttons and checkbox controls
-		self.loadbutton = wx.Button(self,-1,label='Load playlist')
+		self.clearbutton = wx.Button(self,-1,label='Clear')
+		self.clearbutton.Bind(wx.EVT_BUTTON,self.Clear)
+		self.loadbutton = wx.Button(self,-1,label='Load')
 		self.loadbutton.Bind(wx.EVT_BUTTON,self.Load)
-		self.savebutton = wx.Button(self,-1,label='Save playlist')
+		self.savebutton = wx.Button(self,-1,label='Save')
 		self.savebutton.Bind(wx.EVT_BUTTON,self.Save)
 		self.loopcheck = wx.CheckBox(self,-1,label='Repeat playlist')
 		ref = AttributeRef(self.master,'repeat_playlist')
@@ -155,9 +151,8 @@ class PlaylistPanel(wx.Panel):
 		self.rembutton = wx.Button(self,-1,label='Remove task')
 		self.rembutton.Bind(wx.EVT_BUTTON,self.Remove)
 
-
 		edit_sizer1 = wx.BoxSizer(wx.HORIZONTAL)
-		buttons = [self.loadbutton,self.savebutton]
+		buttons = [self.clearbutton,self.loadbutton,self.savebutton]
 		edit_sizer1.AddMany([(button,1,wx.EXPAND) for button in buttons])
 
 		edit_sizer2 = wx.BoxSizer(wx.HORIZONTAL)
@@ -332,7 +327,7 @@ class PlaylistPanel(wx.Panel):
 		self.items[old],self.items[new] = self.items[new],self.items[old]
 		self.redraw_playlist()
 		self.playlist.Select(new)
-		print self.master.current_task.taskname
+		# print self.master.current_task.taskname
 
 	def Down(self,event=None):
 		if not len(self.items): return
@@ -353,9 +348,13 @@ class PlaylistPanel(wx.Panel):
 		self.items[old],self.items[new] = self.items[new],self.items[old]
 		self.redraw_playlist()
 		self.playlist.Select(new)
-		print self.master.current_task.taskname
+		# print self.master.current_task.taskname
 
-	def Load(self,event):
+	def Clear(self,event=None):
+		self.items = []
+		self.redraw_playlist()
+
+	def Load(self,event=None):
 		rootdir = self.master.configroot.replace('~',os.getenv('HOME'))
 		playlist_dir = os.path.join(rootdir,self.master.playlist_directory)
 		if not os.path.exists(playlist_dir):
@@ -420,6 +419,7 @@ class PlaylistPanel(wx.Panel):
 		self.master.current_task = task(self.master.stimcanvas)
 		self.parent.statuspanel.setTask()
 		# force a full re-draw
+		self.master.stimcanvas.recalc_stim_bounds()
 		self.master.stimcanvas.do_refresh_everything = True
 		# print "playing current task: %s" %task.taskname
 
@@ -962,13 +962,6 @@ class OptionPanel(wx.Panel):
 		caller.SetValue(caller.ref.get())
 		# kick-start the rendering loop by forcing a draw event
 		self.master.stimcanvas.onDraw()
-
-	# def onVSync(self,event=None):
-	# 	caller = self.checkboxes['wait_for_vsync']
-	# 	newval = not caller.ref.get()
-	# 	caller.ref.set(newval)
-	# 	caller.SetValue(newval)
-	# 	self.master.stimcanvas.set_vsync(newval)
 
 class ControlWindow(wx.Frame):
 	def __init__(self,parent,master,**kwargs):
