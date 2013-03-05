@@ -146,7 +146,7 @@ class RectangularStencil(object):
 		draw(self,x=0.,y=0.,z=0.,angle=0)
 	"""
 
-	def __init__(self,rect=(0,0,0.5,0.5),polarity=1):
+	def __init__(self,width,height,polarity=1):
 
 		self.stencillist = gl.glGenLists(1)
 		gl.glNewList(self.stencillist,gl.GL_COMPILE)
@@ -160,12 +160,11 @@ class RectangularStencil(object):
 		gl.glStencilFunc(gl.GL_ALWAYS,1,1)
 		gl.glStencilOp(gl.GL_REPLACE,gl.GL_REPLACE,gl.GL_REPLACE)
 
-		x0,y0,w,h = rect
 		gl.glBegin(gl.GL_QUADS)
-		gl.glVertex2f(x0  ,y0  )
-		gl.glVertex2f(x0  ,y0+h)
-		gl.glVertex2f(x0+w,y0+h)
-		gl.glVertex2f(x0+w,y0  )
+		gl.glVertex2f(-width/2.      ,-height/2.       )
+		gl.glVertex2f(-width/2.      ,-height/2.+height)
+		gl.glVertex2f(-width/2.+width,-height/2.+height)
+		gl.glVertex2f(-width/2.+width,-height/2.       )
 		gl.glEnd()
 
 		# re-enable writing to RGBA values
@@ -516,16 +515,29 @@ class OccludedDriftingBar(DriftingBar):
 	Implements:
 		_make_orientations
 		_buildstim
+		_drawstim
 	"""
 	subclass = 'occluded_drifting_bar'
 
 	def _make_orientations(self):
-		angle = np.repeat(self.angles,self.full_nstim//2)
-		self.angle = angle[self.permutation]
-		self.startx = np.array([np.cos(np.deg2rad(aa)) for aa in self.angle])
-		self.starty = np.array([np.sin(np.deg2rad(aa)) for aa in self.angle])*self.area_aspect
-		self.stopx = np.array([np.cos(np.deg2rad(aa)+np.pi) for aa in self.angle])
-		self.stopy = np.array([np.sin(np.deg2rad(aa)+np.pi) for aa in self.angle])*self.area_aspect
+		# angle = np.repeat(self.angles,self.full_nstim//2)
+		occluder_pos = np.linspace(-1.+(self.occluder_width/2.),1.-(self.occluder_width/2.),self.n_occluder_positions)*self.area_aspect
+
+		# make a list of tuples (angle,position)
+		states = []
+		for angle in self.angles:
+			for x0 in occluder_pos:
+				states.append((angle,x0))
+
+		# now we shuffle the stimulus
+		states = [states[ii] for ii in self.permutation]
+
+		self.directions,self.occluder_pos = zip(*states)
+
+		self.startx = np.array([np.cos(np.deg2rad(aa)) for aa in self.directions])
+		self.starty = np.array([np.sin(np.deg2rad(aa)) for aa in self.directions])*self.area_aspect
+		self.stopx = np.array([np.cos(np.deg2rad(aa)+np.pi) for aa in self.directions])
+		self.stopy = np.array([np.sin(np.deg2rad(aa)+np.pi) for aa in self.directions])*self.area_aspect
 
 	def _buildstim(self):
 		self._make_orientations()
@@ -533,8 +545,27 @@ class OccludedDriftingBar(DriftingBar):
 							height=self.bar_height,
 							color=self.bar_color)
 
-		self.aperture = RectangularStencil(	rect=self.rect_occlusion,
+		self.aperture = RectangularStencil(	width=self.occluder_height,
+							height=self.occluder_width*self.area_aspect,
 							polarity=0)
+
+	def drawstim(self):
+
+		# get the current bar position
+		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
+		x = self.startx[self.currentstim] + frac*(self.stopx[self.currentstim]-self.startx[self.currentstim])
+		y = self.starty[self.currentstim] + frac*(self.stopy[self.currentstim]-self.starty[self.currentstim])
+
+		# enable stencil test, draw the aperture to the stencil buffer
+		gl.glEnable(gl.GL_STENCIL_TEST)
+		self.aperture.draw(y=self.occluder_pos[self.currentstim])
+
+		# draw the bar, disable stencil test
+		self.bar.draw(x,y,0,self.directions[self.currentstim])
+		gl.glDisable(gl.GL_STENCIL_TEST)
+
+		pass
 
 class DriftingGrating(Task):
 	"""

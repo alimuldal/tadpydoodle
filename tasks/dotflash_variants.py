@@ -89,10 +89,10 @@ class widescreen_dotflash1(DotFlash):
 	taskname = 'widescreen_dotflash1'
 
 	# stimulus-specific parameters
-	gridshape = (3,6)
+	gridshape = (4,8)
 	gridlim = (0.8,0.8)
 	dot_color = (1.,1.,1.,1.)
-	radius = 0.075*2.
+	radius = 0.075
 	nvertices = 64
 	area_aspect = 2 	# twice as wide as high
 

@@ -41,19 +41,20 @@ class bars2(bars1):
 	taskname = 'bars2'
 	permutation = bars1.fullpermutation[bars1.nstim:]
 
-class bars_firsthalf(OccludedDriftingBar):
+class occluded_bars2(OccludedDriftingBar):
 
-	taskname = 'bars_firsthalf'
+	taskname = 'occluded_bars2'
 
 	# stimulus-specific parameters
 	area_aspect = 2
-	aperture_radius = 1.
-	aperture_nvertices = 256
 	bar_color = (1.,1.,1.,1.)
 	bar_height = 2.
 	bar_width = 0.2
-	rect_occlusion = (-1,-1.1*area_aspect,2,1.1*area_aspect)
 	angles = (90,270)
+	n_occluder_positions = 2
+	occluder_width = 2./n_occluder_positions
+	occluder_height = 2.
+	n_repeats = 4
 
 	# stimulus timing
 	initblanktime = 2.
@@ -66,13 +67,21 @@ class bars_firsthalf(OccludedDriftingBar):
 	photodiodeontime = 0.075
 
 	seed = 0
-	full_nstim = 36
-	nstim = full_nstim // 2
+	full_nstim = len(angles)*n_occluder_positions
+	nstim = full_nstim
 	_gen = np.random.RandomState(seed)
 	fullpermutation = _gen.permutation(full_nstim)
 	permutation = fullpermutation[:nstim]
 
-class bars_secondhalf(bars_firsthalf):
-	taskname = 'bars_secondhalf'
-	rect_occlusion = (-1,0,2,1.1*bars_firsthalf.area_aspect)
-	permutation = bars_firsthalf.fullpermutation[bars_firsthalf.nstim:]
+
+class occluded_bars4(occluded_bars2):
+
+	taskname = 'occluded_bars4'
+
+	n_occluder_positions = 4
+	occluder_width = 2./n_occluder_positions
+
+	full_nstim = len(occluded_bars2.angles)*n_occluder_positions
+	nstim = full_nstim
+	fullpermutation = occluded_bars2._gen.permutation(full_nstim)
+	permutation = fullpermutation[:nstim]
