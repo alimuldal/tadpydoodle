@@ -522,11 +522,26 @@ class PreviewCanvas(GLCanvas):
 	def postinit(self):
 		""" called in onPaint if self.done_postinit == False """
 
+		# display list for setting up the projection
+		# --------------------------------------------------------------
+		self.projectionlist = gl.glGenLists(1)
+		gl.glNewList(self.projectionlist, gl.GL_COMPILE)
+
+		gl.glMatrixMode(gl.GL_PROJECTION)
+		gl.glLoadIdentity()
+		gl.glOrtho(0,1,0,1,0,1)
+
+		gl.glEndList()
+		# --------------------------------------------------------------
+
 		# display list for the texture that we will use to display the
 		# contents of the offscreen
 		# --------------------------------------------------------------
 		self.texlist = gl.glGenLists(1)
 		gl.glNewList(self.texlist, gl.GL_COMPILE)
+
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glPushMatrix()
 
 		gl.glEnable(gl.GL_TEXTURE_2D)
 
@@ -547,6 +562,7 @@ class PreviewCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glDisable(gl.GL_TEXTURE_2D)
+		gl.glPopMatrix()
 
 		gl.glEndList()
 		# --------------------------------------------------------------
@@ -577,12 +593,7 @@ class PreviewCanvas(GLCanvas):
 		# gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		# set up the projection
-		gl.glMatrixMode(gl.GL_PROJECTION)
-		gl.glLoadIdentity()
-		gl.glOrtho(0,1,0,1,0,1)
-
-		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glLoadIdentity()
+		gl.glCallList(self.projectionlist)
 
 		# bind the master's FBO texture
 		gl.glBindTexture(gl.GL_TEXTURE_2D,self.stimcanvas.fbo_texture)
