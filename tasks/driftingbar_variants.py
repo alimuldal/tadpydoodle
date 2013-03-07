@@ -41,6 +41,14 @@ class bars2(bars1):
 	taskname = 'bars2'
 	permutation = bars1.fullpermutation[bars1.nstim:]
 
+class bars_2hz_1(bars1):
+	taskname = 'bars_2hz_1'
+	scan_hz = 2.
+
+class bars_2hz_2(bars2):
+	taskname = 'bars_2hz_2'
+	scan_hz = 2.
+
 class occluded_bars2(OccludedDriftingBar):
 
 	taskname = 'occluded_bars2'

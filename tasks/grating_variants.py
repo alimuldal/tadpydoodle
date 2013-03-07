@@ -39,7 +39,6 @@ class gratings1(DriftingSinusoid):
 	permutation = fullpermutation[:nstim]
 
 class gratings2(gratings1):
-
 	taskname = 'gratings2'
 	permutation = gratings1.fullpermutation[gratings1.nstim:]
 
@@ -50,6 +49,22 @@ class gratings_nointerval1(gratings1):
 class gratings_nointerval2(gratings2):
 	taskname = 'gratings_nointerval2'
 	on_duration = gratings2.interval
+
+class gratings_2hz_1(gratings1):
+	taskname = 'gratings_2hz_1'
+	scan_hz = 2.
+
+class gratings_2hz_2(gratings2):
+	taskname = 'gratings_2hz_2'
+	scan_hz = 2.
+
+class gratings_nointerval_2hz_1(gratings_nointerval1):
+	taskname = 'gratings_nointerval_2hz_1'
+	scan_hz = 2.
+
+class gratings_nointerval_2hz_2(gratings_nointerval2):
+	taskname = 'gratings_nointerval_2hz_2'
+	scan_hz = 2.
 
 class squarewave1(DriftingSquarewave):
 
@@ -96,3 +111,19 @@ class squarewave_nointerval1(squarewave1):
 class squarewave_nointerval2(squarewave2):
 	taskname = 'squarewave_nointerval2'
 	on_duration = squarewave2.interval
+
+class squarewave_2hz_1(squarewave1):
+	taskname = 'squarewave_2hz_1'
+	scan_hz = 2.
+
+class squarewave_2hz_2(squarewave2):
+	taskname = 'squarewave_2hz_2'
+	scan_hz = 2.
+
+class squarewave_nointerval_2hz_1(squarewave_nointerval1):
+	taskname = 'squarewave_nointerval_2hz_1'
+	scan_hz = 2.
+
+class squarewave_nointerval_2hz_2(squarewave_nointerval2):
+	taskname = 'squarewave_nointerval_2hz_2'
+	scan_hz = 2.

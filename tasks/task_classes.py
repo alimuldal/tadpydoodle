@@ -267,10 +267,10 @@ class Task(object):
 
 	Implements:
 		__init__
-		reinit
+		_reinit
 		_buildtimes
 		_buildparamsdict
-		display
+		_display
 	"""
 
 	currentframe = -1
@@ -285,9 +285,10 @@ class Task(object):
 		self.starttime = -1
 		self._buildtimes()
 		self._buildstim()
+		self._buildparamsdict()
 		pass
 
-	def reinit(self):
+	def _reinit(self):
 		"""
 		return the stimulus to its initialised state
 		"""
@@ -330,10 +331,10 @@ class Task(object):
 		pd = {}
 		for name in dir(self):
 			if not name.startswith('_'):
-				pd.update({name:self.__getattr__(name)})
+				pd.update({name:self.__getattribute__(name)})
 		self.paramsdict = pd
 
-	def display(self):
+	def _display(self):
 		"""
 		draw the current stimulus state to the glcanvas
 		"""
@@ -383,7 +384,7 @@ class Task(object):
 
 					# do the actual drawing
 					#-------------------------------
-					self.drawstim()
+					self._drawstim()
 					#-------------------------------
 
 					# force a re-draw of the stimulus area
@@ -426,7 +427,7 @@ class DotFlash(Task):
 
 	Implements:
 		_buildstim
-		drawstim
+		_drawstim
 	"""
 
 	# the name of the stimulus subclass
@@ -448,7 +449,7 @@ class DotFlash(Task):
 		self.dot = Dot(self.radius,self.nvertices,self.dot_color)
 		pass
 
-	def drawstim(self):
+	def _drawstim(self):
 		# draw the dot in the current position
 		self.dot.draw(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
 
@@ -490,7 +491,7 @@ class DriftingBar(Task):
 							nvertices=self.aperture_nvertices,
 							polarity=1)
 
-	def drawstim(self):
+	def _drawstim(self):
 
 		# get the current bar position
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
@@ -549,7 +550,7 @@ class OccludedDriftingBar(DriftingBar):
 							height=self.occluder_width*self.area_aspect,
 							polarity=0)
 
-	def drawstim(self):
+	def _drawstim(self):
 
 		# get the current bar position
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
@@ -601,7 +602,7 @@ class DriftingGrating(Task):
 
 		pass
 
-	def drawstim(self):
+	def _drawstim(self):
 
 		# update the current phase angle
 		on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])

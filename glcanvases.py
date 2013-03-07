@@ -306,7 +306,7 @@ class StimCanvas(GLCanvas):
 			self.do_refresh_photodiode = True
 			self.do_refresh_stimbox = True
 
-			# self.blit_everything = True
+			self.blit_everything = True
 			self.do_refresh_everything = False
 
 			self.alldraws.append(1)
@@ -338,7 +338,7 @@ class StimCanvas(GLCanvas):
 
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
-			# self.blit_stimbox = True
+			self.blit_stimbox = True
 			self.do_refresh_stimbox = False
 
 			# print "draw stimulus: %s" %time.asctime()
@@ -351,7 +351,7 @@ class StimCanvas(GLCanvas):
 			gl.glPushMatrix()
 			gl.glTranslate(x, y, 0)
 			gl.glScale(*(scale,)*3)
-			self.master.current_task.display()
+			self.master.current_task._display()
 			gl.glPopMatrix()
 
 		# draw the crosshairs
@@ -381,7 +381,7 @@ class StimCanvas(GLCanvas):
 			# clear the region containing the photodiode
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-			# self.blit_photodiode = True
+			self.blit_photodiode = True
 			self.do_refresh_photodiode = False
 
 		# disable scissor test, any part of the screen is accessible
@@ -396,28 +396,39 @@ class StimCanvas(GLCanvas):
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 
-			# we can't assume that the back buffer is empty before
-			# we start copying pixels to it - clear it first on
-			# every frame, or we get a crazy glitchy background on
-			# the mac!
-			gl.glClearColor(0,0,0,0)
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+			# # we can't assume that the back buffer is empty before
+			# # we start copying pixels to it - clear it first on
+			# # every frame, or we get a crazy glitchy background on
+			# # the mac!
+			# gl.glClearColor(0,0,0,0)
+			# gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-			# blit the stimulus area
-			x0,y0,w,h = self.stimbounds
-			fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-						x0,y0,x0+w,y0+h,
-						gl.GL_COLOR_BUFFER_BIT,
-						gl.GL_NEAREST)
+			if self.blit_everything:
+				# blit the whole viewport
+				x0,y0,w,h = 0,0,xres,yres
+				fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+							x0,y0,x0+w,y0+h,
+							gl.GL_COLOR_BUFFER_BIT,
+							gl.GL_NEAREST)
 
-			# blit the photodiode area
-			x0,y0,w,h = self.photobounds
-			fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-						x0,y0,x0+w,y0+h,
-						gl.GL_COLOR_BUFFER_BIT,
-						gl.GL_NEAREST)
+			else:
+				if self.blit_stimbox:
+					# blit the stimulus area
+					x0,y0,w,h = self.stimbounds
+					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+								x0,y0,x0+w,y0+h,
+								gl.GL_COLOR_BUFFER_BIT,
+								gl.GL_NEAREST)
 
-		check_for_gl_error()
+				if self.blit_photodiode:
+					# blit the photodiode area
+					x0,y0,w,h = self.photobounds
+					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+								x0,y0,x0+w,y0+h,
+								gl.GL_COLOR_BUFFER_BIT,
+								gl.GL_NEAREST)
+
+		# check_for_gl_error()
 
 		# swap the front and back buffers so that the new frame is now
 		# visible in the canvas
@@ -468,7 +479,7 @@ class PreviewCanvas(GLCanvas):
 		# we don't need a depth or stencil buffer, since this is all
 		# taken care of by the offscreen framebuffer. in fact, it
 		# doesn't really need to be double-buffered either. meh.
-		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
+		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				# wx.glcanvas.WX_GL_RGBA,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,

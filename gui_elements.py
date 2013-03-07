@@ -235,7 +235,7 @@ class PlaylistPanel(wx.Panel):
 			if running:
 				l,c = obj.start
 				self.master.stimcanvas.drawcount = 0
-				self.master.current_task.reinit()
+				self.master.current_task._reinit()
 				# enable the photodiode checkbox while the task is not running
 				self.parent.optionpanel.checkboxes['show_photodiode'].Enable(True)
 
