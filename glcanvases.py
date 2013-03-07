@@ -396,13 +396,6 @@ class StimCanvas(GLCanvas):
 			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 
-			# # we can't assume that the back buffer is empty before
-			# # we start copying pixels to it - clear it first on
-			# # every frame, or we get a crazy glitchy background on
-			# # the mac!
-			# gl.glClearColor(0,0,0,0)
-			# gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
 			if self.blit_everything:
 				# blit the whole viewport
 				x0,y0,w,h = 0,0,xres,yres
@@ -410,6 +403,7 @@ class StimCanvas(GLCanvas):
 							x0,y0,x0+w,y0+h,
 							gl.GL_COLOR_BUFFER_BIT,
 							gl.GL_NEAREST)
+				self.blit_everything = False
 
 			else:
 				if self.blit_stimbox:
@@ -419,6 +413,7 @@ class StimCanvas(GLCanvas):
 								x0,y0,x0+w,y0+h,
 								gl.GL_COLOR_BUFFER_BIT,
 								gl.GL_NEAREST)
+					self.blit_stimbox = False
 
 				if self.blit_photodiode:
 					# blit the photodiode area
@@ -427,6 +422,7 @@ class StimCanvas(GLCanvas):
 								x0,y0,x0+w,y0+h,
 								gl.GL_COLOR_BUFFER_BIT,
 								gl.GL_NEAREST)
+					self.blit_photodiode = False
 
 		# check_for_gl_error()
 
@@ -479,7 +475,7 @@ class PreviewCanvas(GLCanvas):
 		# we don't need a depth or stencil buffer, since this is all
 		# taken care of by the offscreen framebuffer. in fact, it
 		# doesn't really need to be double-buffered either. meh.
-		attribList = [	#wx.glcanvas.WX_GL_DOUBLEBUFFER,
+		attribList = [	wx.glcanvas.WX_GL_DOUBLEBUFFER,
 				wx.glcanvas.WX_GL_BUFFER_SIZE,8,
 				# wx.glcanvas.WX_GL_RGBA,
 				wx.glcanvas.WX_GL_DEPTH_SIZE,0,
