@@ -172,7 +172,7 @@ class StimCanvas(GLCanvas):
 			yres,				# height
 			0,				# border
 			gl.GL_RGB,			# input data format
-			gl.GL_FLOAT,			# input data type
+			gl.GL_UNSIGNED_BYTE,		# input data type
 			None				# input data (none until we render to the framebuffer)
 			)
 
@@ -543,14 +543,14 @@ class PreviewCanvas(GLCanvas):
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glPushMatrix()
 
-		gl.glEnable(gl.GL_TEXTURE_2D)
-
 		# rotate the texture 90o counterclockwise
-		gl.glMatrixMode(gl.GL_TEXTURE);
-		gl.glLoadIdentity();
-		gl.glTranslatef( 0.5, 0.5, 0.0     )
-		gl.glRotatef(	 -90, 0.0, 0.0, 1.0)
-		gl.glTranslatef(-0.5,-0.5, 0.0     )
+		gl.glEnable(gl.GL_TEXTURE_2D)
+		gl.glMatrixMode(gl.GL_TEXTURE)
+		gl.glLoadIdentity()
+
+		gl.glTranslatef(  0.5, 0.5, 0.0     )
+		gl.glRotatef(	-90.0, 0.0, 0.0, 1.0)
+		gl.glTranslatef( -0.5,-0.5, 0.0     )
 
 		# draw the texture
 		gl.glColor4f(1.,1.,1.,1.)
@@ -562,8 +562,9 @@ class PreviewCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glDisable(gl.GL_TEXTURE_2D)
-		gl.glPopMatrix()
 
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glPopMatrix()
 		gl.glEndList()
 		# --------------------------------------------------------------
 
