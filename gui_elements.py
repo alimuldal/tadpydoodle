@@ -711,14 +711,14 @@ class AdjustPanel(wx.Panel):
 			prefix = 'p_'
 
 			# recalculate the photodiode bounding box
-			self.master.stimcanvas.recalc_photo_bounds()
+			recalc = self.master.stimcanvas.recalc_photo_bounds
 
 		elif wx.GetKeyState(wx.WXK_F2):
 			group = self.c_textctls
 			prefix = 'c_'
 
 			# recalculate the stimulus area bounding box
-			self.master.stimcanvas.recalc_stim_bounds()
+			recalc = self.master.stimcanvas.recalc_stim_bounds
 		else:
 			return
 
@@ -748,7 +748,8 @@ class AdjustPanel(wx.Panel):
 		control.ref.set(val)
 		control.SetValue(str(val))
 
-		# force a full re-draw
+		# recalculate bounding box and force a full re-draw
+		recalc()
 		self.master.stimcanvas.do_refresh_everything = True
 
 	def onText(self,event):
@@ -813,6 +814,8 @@ class LogPanel(wx.Panel):
 
 		#--------------------------------------------------------------------------------------
 		# plot frame times
+		import matplotlib
+		matplotlib.use('wxagg')
 		from matplotlib import pyplot as pp
 		from matplotlib import pylab as pl
 		import numpy as np
@@ -844,6 +847,13 @@ class LogPanel(wx.Panel):
 					ax1.axvspan(stimon[ii],stimoff[ii],alpha=0.5,color='g',label='Stimulus draws')
 				else:
 					ax1.axvspan(stimon[ii],stimoff[ii],alpha=0.5,color='g',label='__nolegend__')
+		photoon,photooff = get_onsets_and_offsets(self.master.stimcanvas.photodraws)			
+		if any(photoon) and any(photooff):
+			for ii in xrange(photoon.size):
+				if ii == 0:
+					ax1.axvspan(photoon[ii],photooff[ii],alpha=0.5,color='b',label='Photodiode draws')
+				else:
+					ax1.axvspan(photoon[ii],photooff[ii],alpha=0.5,color='b',label='__nolegend__')
 
 		alldrawon,alldrawoff = get_onsets_and_offsets(self.master.stimcanvas.alldraws)
 		if any(alldrawon) and any(alldrawoff):
@@ -853,11 +863,12 @@ class LogPanel(wx.Panel):
 				else:
 					ax1.axvspan(alldrawon[ii],alldrawoff[ii],alpha=0.5,color='r',label='__nolegend__')
 
-		ax1.fill_between(np.arange(nframes),min_ft,max_ft,alpha=0.3,facecolor='b',edgecolor='None')
-		ax1.plot(np.arange(nframes),frametimes,'-k',alpha=0.5,label='Frame draw times')
-		ax1.plot(np.arange(nframes),mean_ft,'-b',label='Mean draw time',lw=2)
+		ax1.fill_between(np.arange(nframes),min_ft,max_ft,alpha=0.1,facecolor='k',edgecolor='None')
+		ax1.plot(np.arange(nframes),frametimes,'-k',alpha=0.3,label='Frame drawtime')
+		ax1.plot(np.arange(nframes),mean_ft,'-k',alpha=0.75,label='Mean drawtime',lw=2)
+		ax1.axhline(y=self.master.min_delta_t*1E-3,ls='--',c='k',alpha=0.75,label='Minimum drawtime')
 
-		ax1.set_ylim(0,0.05)
+		ax1.set_ylim(0,0.02)
 		ax1.set_xlabel('Frame #')
 		ax1.legend()
 
@@ -865,7 +876,7 @@ class LogPanel(wx.Panel):
 
 		fig2,ax2 = pp.subplots(1,1)
 
-		ax2.hist(frametimes,bins=10**np.linspace(-4,0,50))
+		ax2.hist(frametimes,bins=10**np.linspace(-3.5,-1.5,50))
 		ax2.set_xscale('log')
 		ax2.set_xlabel('Draw time (sec)')
 		ax2.set_ylabel('Frequency')

@@ -66,6 +66,7 @@ class StimCanvas(GLCanvas):
 		self.frametimes = collections.deque(maxlen=self.master.log_nframes)
 		self.alldraws = collections.deque(maxlen=self.master.log_nframes)
 		self.stimdraws = collections.deque(maxlen=self.master.log_nframes)
+		self.photodraws = collections.deque(maxlen=self.master.log_nframes)
 
 		pass
 
@@ -83,9 +84,12 @@ class StimCanvas(GLCanvas):
 		gl.glClearStencil(0)
 		gl.glClearDepth(0)
 
-		# hinting, probably probably ignored by implementation
-		gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
-		gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST)
+		# blending is costly
+		gl.glDisable(gl.GL_BLEND)
+
+		# # hinting, probably probably ignored by implementation
+		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
+		# gl.glHint(gl.GL_POLYGON_SMOOTH_HINT, gl.GL_NICEST)
 
 		pass
 
@@ -227,10 +231,10 @@ class StimCanvas(GLCanvas):
 			aspect = 1.
 
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
-		self.stimbounds = ( 	int(np.floor(x-(scale+3))),
-			 		int(np.floor(y-(aspect*scale+3))),
-			 		int(np.ceil(2*(scale+3))),
-			 		int(np.ceil(2*(aspect*scale+3)))
+		self.stimbounds = ( 	int(np.floor(x-(scale+1))),
+			 		int(np.floor(y-(aspect*scale+1))),
+			 		int(np.ceil(2*(scale+1))),
+			 		int(np.ceil(2*(aspect*scale+1)))
 			 		)
 
 		self.stimbox_aspect = aspect
@@ -238,10 +242,10 @@ class StimCanvas(GLCanvas):
 	def recalc_photo_bounds(self):
 
 		x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
-		self.photobounds = ( 	int(np.floor(x-(scale+3))),
-			 		int(np.floor(y-(scale+3))),
-			 		int(np.ceil(2*(scale+3))),
-			 		int(np.ceil(2*(scale+3)))
+		self.photobounds = ( 	int(np.floor(x-(scale+1))),
+			 		int(np.floor(y-(scale+1))),
+			 		int(np.ceil(2*(scale+1))),
+			 		int(np.ceil(2*(scale+1)))
 			 		)
 
 	def onPaint(self,event=None):
@@ -271,7 +275,6 @@ class StimCanvas(GLCanvas):
 		This is the business end, where the actual rendering loop
 		executes
 		"""
-
 		self.SetCurrent()
 
 		# if we're previewing, we will draw to the offscreen framebuffer
@@ -299,19 +302,17 @@ class StimCanvas(GLCanvas):
 		if self.do_refresh_everything:
 
 			gl.glClearColor(0., 0., 0., 0.)
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
 			# we'll need to re-draw these after we've wiped the
 			# whole scene
 			self.do_refresh_photodiode = True
 			self.do_refresh_stimbox = True
 
-			self.blit_everything = True
 			self.do_refresh_everything = False
+			self.everything_changed = True
 
-			self.alldraws.append(1)
-		else:
-			self.alldraws.append(0)
+			# print "refresh_everything: %f" %time.time()
 
 		#---------------------------------------------------------------
 		# NB - we need to draw from back to front in order for depth
@@ -325,26 +326,24 @@ class StimCanvas(GLCanvas):
 		# now draw/clear calls only affect the box where the stimulus is
 		gl.glScissor( *self.stimbounds )
 
-		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
-
 		if self.do_refresh_stimbox:
 
 			# clear the stimulus area using the task background
 			# color. we do this even if the task isn't running yet
 			# so that the correct background color is displayed in
 			# advance.
-			if self.master.current_task:
+			try:
 				gl.glClearColor(*self.master.current_task.background_color)
+			except AttributeError:
+				gl.glClearColor(0.,0.,0.,0.)
 
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
-			self.blit_stimbox = True
+			self.stimbox_changed = True
 			self.do_refresh_stimbox = False
+			# print "refresh_stimbox: %f" %time.time()
 
-			# print "draw stimulus: %s" %time.asctime()
-			self.stimdraws.append(1)
-		else:
-			self.stimdraws.append(0)
+		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 
 		# draw the current stimulus state
 		if self.master.run_task:
@@ -358,7 +357,6 @@ class StimCanvas(GLCanvas):
 		if self.master.show_crosshairs:
 			gl.glPushMatrix()
 			gl.glTranslate(x, y, -127)
-
 			gl.glScale(*(scale,)*3)
 			gl.glCallList(self.crosshairlist)
 
@@ -369,72 +367,91 @@ class StimCanvas(GLCanvas):
 		# draw the photodiode
 		if self.do_refresh_photodiode:
 
+			# we 'draw' the photodiode by selectively clearing a
+			# rectangle in pixel coordinates
 			gl.glScissor( *self.photobounds )
 
-			# set our clear color according to whether the photodiode
-			# is on
+			# set our clear color according to whether the
+			# photodiode is ON or OFF
 			if self.master.show_photodiode:
 				gl.glClearColor(1,1,1,1)
 			else:
-				gl.glClearColor(0,0,0,0)
+				gl.glClearColor(0,0,0,1)
 
 			# clear the region containing the photodiode
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
-			self.blit_photodiode = True
+			self.photodiode_changed = True
 			self.do_refresh_photodiode = False
+			# print "refresh_photodiode: %f" %time.time()
 
 		# disable scissor test, any part of the screen is accessible
 		gl.glDisable(gl.GL_SCISSOR_TEST)
 
-		# if we're rendering offscreen we now need to blit the contents
-		# of the FBO to the back buffer so that they will be made
-		# visible when we call SwapBuffers()
-		if self.master.show_preview:
+		# if we're logging framerate, also record what was being redrawn
+		if self.master.log_framerate:
+			self.alldraws.append(int(self.everything_changed))
+			self.stimdraws.append(int(self.stimbox_changed))
+			self.photodraws.append(int(self.photodiode_changed))
 
-			# we read from the framebuffer and write to the back buffer
-			fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
-			fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
+		# did anything change during this loop iteration?
+		if (self.stimbox_changed or self.photodiode_changed or self.everything_changed):
 
-			if self.blit_everything:
-				# blit the whole viewport
-				x0,y0,w,h = 0,0,xres,yres
-				fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-							x0,y0,x0+w,y0+h,
-							gl.GL_COLOR_BUFFER_BIT,
-							gl.GL_NEAREST)
-				self.blit_everything = False
+			# if we're rendering offscreen we now need to blit the
+			# contents of the FBO to the back buffer so that they
+			# will be made visible when we call SwapBuffers()
+			if self.master.show_preview:
 
-			else:
-				if self.blit_stimbox:
-					# blit the stimulus area
-					x0,y0,w,h = self.stimbounds
+				# we read from the framebuffer and write to the
+				# back buffer
+				fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
+				fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
+
+				if self.everything_changed:
+					# blit the whole viewport area
+					x0,y0,w,h = 0,0,xres,yres
 					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
 								x0,y0,x0+w,y0+h,
 								gl.GL_COLOR_BUFFER_BIT,
 								gl.GL_NEAREST)
-					self.blit_stimbox = False
 
-				if self.blit_photodiode:
-					# blit the photodiode area
-					x0,y0,w,h = self.photobounds
-					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-								x0,y0,x0+w,y0+h,
-								gl.GL_COLOR_BUFFER_BIT,
-								gl.GL_NEAREST)
-					self.blit_photodiode = False
+				else:
+					if self.stimbox_changed:
+						# blit just the stimulus area
+						x0,y0,w,h = self.stimbounds
+						fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+									x0,y0,x0+w,y0+h,
+									gl.GL_COLOR_BUFFER_BIT,
+									gl.GL_NEAREST)
 
-		# check_for_gl_error()
+					if self.photodiode_changed:
+						# blit just the photodiode area
+						x0,y0,w,h = self.photobounds
+						fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
+									x0,y0,x0+w,y0+h,
+									gl.GL_COLOR_BUFFER_BIT,
+									gl.GL_NEAREST)
 
-		# swap the front and back buffers so that the new frame is now
-		# visible in the canvas
-		self.SwapBuffers()
+			# swap the front and back buffers so that the changes
+			# are made visible
+			self.SwapBuffers()
 
-		# we only draw every nth frame to the preview canvas to reduce
-		# copying overhead
-		if self.master.show_preview:
-			if not self.drawcount % self.master.preview_frequency:
+			# print_gl_error()
+
+			if self.master.show_preview:
+				# draw every 'new' frame to the preview canvas
 				[listener.onDraw() for listener in self.listeners]
+
+		else:
+			# nothing has changed during this rendering loop, so we
+			# don't need to blit anything or call SwapBuffers on
+			# either the main canvas or the preview canvas
+			pass
+
+		# # draw only every nth frame to the preview canvas to reduce
+		# # overhead
+		# if not self.drawcount % self.master.preview_frequency:
+		# 	[listener.onDraw() for listener in self.listeners]
 
 		# keep a running minimum of the framerate and update the task
 		# status panel
@@ -453,6 +470,10 @@ class StimCanvas(GLCanvas):
 		if not self.drawcount % self.master.framerate_window:
 			self.drawcount = 0
 			self.master.controlwindow.statuspanel.onUpdate()
+
+		self.everything_changed = False
+		self.stimbox_changed = False
+		self.photodiode_changed = False
 
 		# if we're running the display loop, queue another draw call
 		if self.master.run_loop:
@@ -540,12 +561,11 @@ class PreviewCanvas(GLCanvas):
 		self.texlist = gl.glGenLists(1)
 		gl.glNewList(self.texlist, gl.GL_COMPILE)
 
-		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glPushMatrix()
-
 		# rotate the texture 90o counterclockwise
 		gl.glEnable(gl.GL_TEXTURE_2D)
+
 		gl.glMatrixMode(gl.GL_TEXTURE)
+		gl.glPushMatrix()
 		gl.glLoadIdentity()
 
 		gl.glTranslatef(  0.5, 0.5, 0.0     )
@@ -561,10 +581,9 @@ class PreviewCanvas(GLCanvas):
 		gl.glTexCoord2f( 1, 1 );	gl.glVertex2f( 1, 1 )
 		gl.glEnd()
 
+		gl.glPopMatrix()
 		gl.glDisable(gl.GL_TEXTURE_2D)
 
-		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glPopMatrix()
 		gl.glEndList()
 		# --------------------------------------------------------------
 
@@ -591,7 +610,6 @@ class PreviewCanvas(GLCanvas):
 			self.done_postinit = True
 
 		gl.glViewport(0,0,*self.currsize)
-		# gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 		# set up the projection
 		gl.glCallList(self.projectionlist)
@@ -604,6 +622,8 @@ class PreviewCanvas(GLCanvas):
 
 		# swap buffers, show the updated texture in this canvas
 		self.SwapBuffers()
+
+		# print_gl_error()
 
 	def onMotion(self,event):
 		""" called when mouse moves within the figure """
@@ -630,20 +650,23 @@ class PreviewCanvas(GLCanvas):
 			controls = self.master.controlwindow.adjustpanel.p_textctls
 			prefix = 'p_'
 
-			# recalculate the photodiode bounding box
-			self.stimcanvas.recalc_photo_bounds()
+			# recalculate the photodiode bounding box afterwards
+			recalc = self.stimcanvas.recalc_photo_bounds
 
 		else:
 			controls = self.master.controlwindow.adjustpanel.c_textctls
 			prefix = 'c_'
 
-			# recalculate the stimulus bounding box
-			self.stimcanvas.recalc_stim_bounds()
+			# recalculate the stimulus bounding box afterwards
+			recalc = self.stimcanvas.recalc_stim_bounds
 
 		controls[prefix+'xpos'].ref.set(display_x)
 		controls[prefix+'xpos'].SetValue(str(display_x))
 		controls[prefix+'ypos'].ref.set(display_y)
 		controls[prefix+'ypos'].SetValue(str(display_y))
+
+		# recalculate bounding box
+		recalc()
 
 		# force a re-draw of the whole scene
 		self.stimcanvas.do_refresh_everything = True
@@ -652,15 +675,13 @@ class PreviewCanvas(GLCanvas):
 
 		if wx.GetKeyState(wx.WXK_F1):
 			control = self.master.controlwindow.adjustpanel.p_textctls['p_scale']
-
-			# recalculate the photodiode bounding box
-			self.stimcanvas.recalc_photo_bounds()
+			# recalculate the photodiode bounding box afterwards
+			recalc = self.stimcanvas.recalc_photo_bounds
 
 		elif wx.GetKeyState(wx.WXK_F2):
 			control = self.master.controlwindow.adjustpanel.c_textctls['c_scale']
-
-			# recalculate the stimulus bounding box
-			self.stimcanvas.recalc_stim_bounds()
+			# recalculate the stimulus bounding box afterwards
+			recalc = self.stimcanvas.recalc_stim_bounds
 		else:
 			return
 
@@ -672,10 +693,13 @@ class PreviewCanvas(GLCanvas):
 		control.ref.set(val)
 		control.SetValue(str(val))
 
+		# recalculate bounding box
+		recalc()
+
 		# force a re-draw of the whole scene
 		self.stimcanvas.do_refresh_everything = True
 
-def check_for_gl_error():
+def print_gl_error():
 	"""
 	for debugging purposes, check to see if OpenGL threw an error, and print
 	the relevant error descriptor

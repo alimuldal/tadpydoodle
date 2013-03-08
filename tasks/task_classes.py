@@ -249,14 +249,16 @@ class GratingTextureQuad(object):
 
 		# we work on the texture matrix for now
 		gl.glMatrixMode(gl.GL_TEXTURE)
+		gl.glPushMatrix()
+		gl.glLoadIdentity()
 
 		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
-		gl.glLoadIdentity()
 		gl.glTranslate(offset,0,0)
 		gl.glRotatef(angle,0,0,1)
 		gl.glCallList(self.texlist)
 
-		# we go BACK to the modelview matrix for safety!!!
+		# we pop and go BACK to the modelview matrix for safety!!!
+		gl.glPopMatrix()
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 
 ################################################################################
@@ -360,10 +362,7 @@ class Task(object):
 			new_photodiode_state = (
 				dt < (self.frametimes[self.currentframe] + self.photodiodeontime)
 				)
-
-			if self.canvas.master.show_photodiode != new_photodiode_state:
-				self.canvas.do_refresh_photodiode = True
-
+			self.canvas.do_refresh_photodiode = (self.canvas.master.show_photodiode != new_photodiode_state)
 			self.canvas.master.show_photodiode = new_photodiode_state
 	
 			timeafterinitblank = dt - self.initblanktime
@@ -486,7 +485,6 @@ class DriftingBar(Task):
 		self.bar = Bar(				width=self.bar_width,
 							height=self.bar_height,
 							color=self.bar_color)
-
 
 		self.aperture = CircularStencil(	radius=self.aperture_radius,
 							nvertices=self.aperture_nvertices,
