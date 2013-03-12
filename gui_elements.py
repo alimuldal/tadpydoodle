@@ -169,12 +169,9 @@ class PlaylistPanel(wx.Panel):
 		playbox_sizer.Add(edit_sizer2,0,wx.EXPAND)
 		playbox_sizer.Add(edit_sizer3,0,wx.EXPAND|wx.ALL,5)
 
-
-		# self.playlist.Bind(wx.EVT_LIST_ITEM_ACTIVATED,self.onPlaylistActivated)
-
 		master_sizer = wx.BoxSizer(wx.VERTICAL)
 		master_sizer.Add(taskbox_sizer,1,wx.EXPAND)
-		master_sizer.Add((0,0),0,wx.EXPAND|wx.TOP|wx.BOTTOM,10)
+		master_sizer.Add((0,0),0,wx.EXPAND|wx.TOP|wx.BOTTOM,5)
 		master_sizer.Add(playbox_sizer,1,wx.EXPAND)
 
 		self.SetSizerAndFit(master_sizer)
@@ -980,7 +977,7 @@ class ControlWindow(wx.Frame):
 
 		self.master = master
 
-		self.previewcanvas = glc.PreviewCanvas(self,self.master.stimcanvas,size=(480,640))
+		self.previewcanvas = glc.PreviewCanvas(self,self.master.stimcanvas,size=(420,560))
 		# self.taskpanel = TaskPanel(self,master)
 		self.playlistpanel = PlaylistPanel(self,master)
 		self.statuspanel = StatusPanel(self,master)
@@ -988,27 +985,22 @@ class ControlWindow(wx.Frame):
 		self.optionpanel = OptionPanel(self,master)
 		self.logpanel = LogPanel(self,master)
 
-
 		left = wx.BoxSizer(wx.VERTICAL)
-		# left.Add(self.taskpanel,0,wx.EXPAND)
-		left.Add((0,0),1,wx.EXPAND)
-		left.Add(self.adjustpanel,0,wx.EXPAND)
-		left.Add((0,0),1,wx.EXPAND)
-		left.Add(self.optionpanel,0,wx.EXPAND)
-		left.Add(self.logpanel,0,wx.EXPAND)
-		left.Add((0,0),1,wx.EXPAND)
+		left.Add(self.playlistpanel,1,wx.EXPAND)
+
+		right = wx.BoxSizer(wx.VERTICAL)
+		right.Add(self.adjustpanel,1,wx.EXPAND)
+		right.Add(self.optionpanel,0,wx.EXPAND)
+		right.Add(self.logpanel,0,wx.EXPAND)
 
 		middle = wx.BoxSizer(wx.VERTICAL)
 		middle.Add(self.previewcanvas,1,wx.SHAPED|wx.ALL|wx.ALIGN_TOP|wx.ALIGN_CENTER_HORIZONTAL ,border=2)
 		middle.Add(self.statuspanel,0,wx.EXPAND)
 
-		right = wx.BoxSizer(wx.VERTICAL)
-		right.Add(self.playlistpanel,1,wx.EXPAND)
-
 		main = wx.BoxSizer(wx.HORIZONTAL)
-		main.Add(right,0,wx.EXPAND)
-		main.Add(middle,1,wx.EXPAND)
 		main.Add(left,0,wx.EXPAND)
+		main.Add(middle,1,wx.EXPAND)
+		main.Add(right,0,wx.EXPAND)
 
 		self.SetSizerAndFit(main)
 

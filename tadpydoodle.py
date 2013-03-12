@@ -24,7 +24,7 @@ class AppThread(multiprocessing.Process):
 	'photodiode':	{'show_photodiode':True,'p_xpos':300.,'p_ypos':100. ,'p_scale':20.},
 	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,'c_scale':145.},
 	'stimulus':	{'show_preview':True,'log_framerate':False,'log_nframes':10000,
-			'run_loop':True,'wait_for_vsync':False,'min_delta_t':1,'framerate_window':100},
+			'run_loop':True,'vblank_mode':0,'min_delta_t':1,'framerate_window':100},
 	'playlist':	{'playlist_directory':'playlists','repeat_playlist':True,
 			'auto_start_tasks':False}
 			}
@@ -48,8 +48,8 @@ class AppThread(multiprocessing.Process):
 		self.loadConfig()
 
 		# setting this environment variable forces vsync on/off (on my
-		# Acer laptop that runs Optimus...)
-		os.environ.update({'vblank_mode':str(int(self.wait_for_vsync))})
+		# Acer laptop, Intel Sandy Bridge built-in grapics...)
+		os.environ.update({'vblank_mode':str(self.vblank_mode)})
 
 		print "Initialising stimulus window..."
 		# we need to pause here, or for some reason the thread stalls

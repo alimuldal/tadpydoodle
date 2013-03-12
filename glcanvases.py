@@ -8,10 +8,10 @@ OpenGL.ERROR_LOGGING = False
 OpenGL.ERROR_ON_COPY = True
 
 import OpenGL.GL as gl
-import OpenGL.GLU as glu
-import OpenGL.GLUT as glut
+# import OpenGL.GLU as glu
+# import OpenGL.GLUT as glut
 import OpenGL.GL.framebufferobjects as fbo
-import OpenGL.GLX as glx
+# import OpenGL.GLX as glx
 
 import wx
 from wx.glcanvas import GLCanvas,GLCanvasWithContext
@@ -436,6 +436,10 @@ class StimCanvas(GLCanvas):
 			# are made visible
 			self.SwapBuffers()
 
+			self.everything_changed = False
+			self.stimbox_changed = False
+			self.photodiode_changed = False
+
 			# print_gl_error()
 
 			if self.master.show_preview:
@@ -471,15 +475,10 @@ class StimCanvas(GLCanvas):
 			self.drawcount = 0
 			self.master.controlwindow.statuspanel.onUpdate()
 
-		self.everything_changed = False
-		self.stimbox_changed = False
-		self.photodiode_changed = False
-
 		# if we're running the display loop, queue another draw call
 		if self.master.run_loop:
 			self.drawcount += 1
 			self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
-
 
 class PreviewCanvas(GLCanvas):
 	"""
@@ -583,6 +582,9 @@ class PreviewCanvas(GLCanvas):
 
 		gl.glPopMatrix()
 		gl.glDisable(gl.GL_TEXTURE_2D)
+
+		# unbind the texture!
+		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
 
 		gl.glEndList()
 		# --------------------------------------------------------------
