@@ -127,3 +127,40 @@ class squarewave_nointerval_2hz_1(squarewave_nointerval1):
 class squarewave_nointerval_2hz_2(squarewave_nointerval2):
 	taskname = 'squarewave_nointerval_2hz_2'
 	scan_hz = 2.
+
+class orientation_test(squarewave1):
+
+	taskname = 'grating_orientation_test'
+
+	nstim = 8
+	on_duration = 1
+	interval = 1
+	initblanktime = 0
+	finalblanktime = 0
+
+	def _make_orientations(self):
+		self.orientation = np.linspace(0,360,self.nstim,endpoint=False)
+
+	_olddraw = squarewave1._drawstim
+	def _drawstim(self):
+		self._olddraw()
+		print "%f deg" %self.orientation[self.currentstim]
+
+
+# class orientation_test(gratings1):
+
+# 	taskname = 'grating_orientation_test2'
+
+# 	nstim = 8
+# 	on_duration = 1
+# 	interval = 1
+# 	initblanktime = 0
+# 	finalblanktime = 0
+
+# 	def _make_orientations(self):
+# 		self.orientation = np.linspace(0,360,self.nstim,endpoint=False)
+
+# 	_olddraw = gratings1._drawstim
+# 	def _drawstim(self):
+# 		self._olddraw()
+# 		print "%f deg" %self.orientation[self.currentstim]

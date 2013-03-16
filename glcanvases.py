@@ -8,7 +8,7 @@ OpenGL.ERROR_LOGGING = False
 OpenGL.ERROR_ON_COPY = True
 
 import OpenGL.GL as gl
-# import OpenGL.GLU as glu
+import OpenGL.GLU as glu
 # import OpenGL.GLUT as glut
 import OpenGL.GL.framebufferobjects as fbo
 # import OpenGL.GLX as glx
@@ -289,10 +289,10 @@ class StimCanvas(GLCanvas):
 		gl.glViewport(0, 0, xres, yres)
 
 		# set an orthogonal projection - visible region will be from
-		# 0-->size in x and y, and from -128-->128 in z
+		# 0-->size in x and y, and from -1-->1 in z
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
-		gl.glOrtho(0,xres,0,yres,-128,128)
+		gl.glOrtho(0,xres,0,yres,-1,1)
 		# (left, right, bottom, top, near, far)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
@@ -315,8 +315,8 @@ class StimCanvas(GLCanvas):
 			# print "refresh_everything: %f" %time.time()
 
 		#---------------------------------------------------------------
-		# NB - we need to draw from back to front in order for depth
-		# testing to work correctly!
+		# NB - we need to draw from back to front because I'm too stupid
+		# to figure out depth testing
 		#---------------------------------------------------------------
 
 		# enable scissor test so that only selected regions of the
@@ -349,17 +349,20 @@ class StimCanvas(GLCanvas):
 		if self.master.run_task:
 			gl.glPushMatrix()
 			gl.glTranslate(x, y, 0)
-			gl.glScale(*(scale,)*3)
+			# OK, this is a total hack - giving a negative scale in
+			# the x-axis flips it. this fixes a problem where task
+			# x-coordinates were inverted (also note that x and y
+			# are swapped, since the stimcanvas is rotated 90o)
+			gl.glScale(scale,-scale,1)
 			self.master.current_task._display()
 			gl.glPopMatrix()
 
 		# draw the crosshairs
 		if self.master.show_crosshairs:
 			gl.glPushMatrix()
-			gl.glTranslate(x, y, -127)
-			gl.glScale(*(scale,)*3)
+			gl.glTranslate(x, y, 0)
+			gl.glScale(scale,scale,1)
 			gl.glCallList(self.crosshairlist)
-
 			gl.glScale(1,self.stimbox_aspect,1)
 			gl.glCallList(self.stimboxlist)
 			gl.glPopMatrix()

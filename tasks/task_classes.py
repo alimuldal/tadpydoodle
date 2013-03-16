@@ -7,6 +7,32 @@ OpenGL.ERROR_CHECKING = False
 OpenGL.ERROR_LOGGING = False
 import OpenGL.GL as gl
 
+"""
+################################################################################
+Conventions for stimulus orientation
+################################################################################
+
+1) Since the projector is oriented vertically, the main stimulus canvas (and the
+   framebuffer) are rotated 90deg clockwise relative to the preview canvas.
+
+      - When you are designing a stimulus, x and y coordinates should correspond
+	to what you see on the preview canvas (and to what actually gets
+	projected onto the screen), rather than as they appear on the stimulus
+	canvas.
+
+      - Transforming the coordinates from preview --> stimulus canvas should be
+	handled within the _drawstim() method of the stimulus and *nowhere
+	else*.
+
+2) It is important to bear in mind that what the animal *actually* sees is a 
+   mirror image of what the projector displays (i.e. flipped in x), because the 
+   animal sees the 'back' surface of the translucent screen.
+
+      - This should be corrected for at the point of analysis, *not* in the
+	stimulus class itself - all coordinates, orientations etc. should look
+	'correct' on the preview canvas.
+"""
+
 ################################################################################
 # stimulus primitives
 
@@ -46,6 +72,22 @@ class Bar(object):
 		gl.glRotate(angle,0.,0.,1.)
 		gl.glCallList(self.barlist)
 		gl.glPopMatrix()
+
+def get_current_bar_xy(frac,angle,radius=1,origin=(0,0)):
+	"""
+	Convenience function to get the current x/y position based on the
+	fraction of the sweep completed and the angle of the sweep.
+
+	The optional 'radius' and 'origin' parameters control the length of the
+	sweep and the centre point that it passes through respectively.
+	"""
+	x0,y0 = origin
+	rads = np.deg2rad(angle)
+	sx = x0+radius*np.sin(rads)
+	sy = y0+radius*np.cos(rads)
+	ex = x0+radius*np.sin(rads+np.pi)
+	ey = y0+radius*np.cos(rads+np.pi)
+	return sx + frac*(ex-sx),sy + frac*(ey-sy)
 
 class Dot(object):
 	"""
@@ -283,7 +325,7 @@ class Task(object):
 	area_aspect = 1.
 
 	def __init__(self,canvas=None):
-		self.canvas = canvas
+		self._canvas = canvas
 		self.starttime = -1
 		self._buildtimes()
 		self._buildstim()
@@ -310,7 +352,7 @@ class Task(object):
 		self.theoreticalstimtimes = (self.initblanktime + self.ontimes)
 		self.finishtime = 	  self.initblanktime \
 					+ self.finalblanktime \
-					+ self.ontimes[-1] 
+					+ self.offtimes[-1] 
 		# theoretical scan times
 		self.frametimes = np.arange(0.,self.finishtime,1./self.scan_hz)
 		self.nframes = self.frametimes.size
@@ -362,8 +404,8 @@ class Task(object):
 			new_photodiode_state = (
 				dt < (self.frametimes[self.currentframe] + self.photodiodeontime)
 				)
-			self.canvas.do_refresh_photodiode = (self.canvas.master.show_photodiode != new_photodiode_state)
-			self.canvas.master.show_photodiode = new_photodiode_state
+			self._canvas.do_refresh_photodiode = (self._canvas.master.show_photodiode != new_photodiode_state)
+			self._canvas.master.show_photodiode = new_photodiode_state
 	
 			timeafterinitblank = dt - self.initblanktime
 
@@ -387,7 +429,7 @@ class Task(object):
 					#-------------------------------
 
 					# force a re-draw of the stimulus area
-					self.canvas.do_refresh_stimbox = True
+					self._canvas.do_refresh_stimbox = True
 
 					# make sure we re-draw one more time
 					# after the stimulus has finished
@@ -401,7 +443,7 @@ class Task(object):
 						self.on_flag = True
 
 				elif self.stim_on_last_frame:
-					self.canvas.do_refresh_stimbox = True
+					self._canvas.do_refresh_stimbox = True
 					self.stim_on_last_frame = False
 
 				if dt > self.finishtime and not self.finished:
@@ -412,9 +454,9 @@ class Task(object):
 						"theoretical and actual stimulus times:"
 					print np.abs(self.actualstimtimes - self.theoreticalstimtimes)
 
-					if not self.canvas.master.auto_start_tasks:
-						self.canvas.master.controlwindow.playlistpanel.onRunTask()
-					self.canvas.master.controlwindow.playlistpanel.Next()
+					if not self._canvas.master.auto_start_tasks:
+						self._canvas.master.controlwindow.playlistpanel.onRunTask()
+					self._canvas.master.controlwindow.playlistpanel.Next()
 
 			self.dt = dt
 
@@ -433,26 +475,28 @@ class DotFlash(Task):
 	# the name of the stimulus subclass
 	subclass = 'dot_flash'
 
-	def _buildstim(self):
-		"""
-		construct a generic flashing dot stimulus
-		"""
+	def _make_positions(self):
 		# generate a random permutation of x,y coordinates
 		nx,ny = self.gridshape
-		x_vals = np.linspace(-1,1,nx)*self.gridlim[0]
-		y_vals = np.linspace(-1,1,ny)*self.gridlim[1]*self.area_aspect
+		x_vals = np.linspace(-1,1,nx)*self.gridlim[0]*self.area_aspect
+		y_vals = np.linspace(-1,1,ny)*self.gridlim[1]
 		x, y = np.meshgrid(x_vals,y_vals)
 		self.xpos = x.flatten()[self.permutation]
 		self.ypos = y.flatten()[self.permutation]
 
+	def _buildstim(self):
+		"""
+		construct a generic flashing dot stimulus
+		"""
+		self._make_positions()
+
 		# create the dot
-		self.dot = Dot(self.radius,self.nvertices,self.dot_color)
+		self._dot = Dot(self.radius,self.nvertices,self.dot_color)
 		pass
 
 	def _drawstim(self):
-		# draw the dot in the current position
-		self.dot.draw(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
-
+		# draw the dot in the current position (ROTATED 90o!)
+		self._dot.draw(self.ypos[self.currentstim],self.xpos[self.currentstim],0.)
 
 class DriftingBar(Task):
 	"""
@@ -468,42 +512,37 @@ class DriftingBar(Task):
 	subclass = 'drifting_bar'
 
 	def _make_orientations(self):
-		# start/stop positions and angles for each bar sweep - these are
-		# all good!
-		angle = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
+		# direction for each bar sweep
+		orientation = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
 
 		# do the shuffling
-		angle = angle[self.permutation]
-		self.angle = angle
-		self.startx = np.array([np.cos(np.deg2rad(aa)) for aa in self.angle])
-		self.starty = np.array([np.sin(np.deg2rad(aa)) for aa in self.angle])
-		self.stopx = np.array([np.cos(np.deg2rad(aa)+np.pi) for aa in self.angle])
-		self.stopy = np.array([np.sin(np.deg2rad(aa)+np.pi) for aa in self.angle])
+		self.orientation = orientation[self.permutation]
 
 	def _buildstim(self):
 		self._make_orientations()
-		self.bar = Bar(				width=self.bar_width,
+		self._bar = Bar(			width=self.bar_width,
 							height=self.bar_height,
 							color=self.bar_color)
 
-		self.aperture = CircularStencil(	radius=self.aperture_radius,
+		self._aperture = CircularStencil(	radius=self.aperture_radius,
 							nvertices=self.aperture_nvertices,
 							polarity=1)
 
 	def _drawstim(self):
 
-		# get the current bar position
+		# get the current bar position (ROTATED 90o!)
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
 		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
-		x = self.startx[self.currentstim] + frac*(self.stopx[self.currentstim]-self.startx[self.currentstim])
-		y = self.starty[self.currentstim] + frac*(self.stopy[self.currentstim]-self.starty[self.currentstim])
+		x,y = get_current_bar_xy(	frac,
+						-self.orientation[self.currentstim]-90,
+						radius=max(1,self.area_aspect))
 
 		# enable stencil test, draw the aperture to the stencil buffer
 		gl.glEnable(gl.GL_STENCIL_TEST)
-		self.aperture.draw()
+		self._aperture.draw()
 
-		# draw the bar, disable stencil test
-		self.bar.draw(x,y,0,self.angle[self.currentstim])
+		# draw the bar (ROTATED 90o!), disable stencil test
+		self._bar.draw(y,x,0,-self.orientation[self.currentstim]-90)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -521,7 +560,9 @@ class OccludedDriftingBar(DriftingBar):
 
 	def _make_orientations(self):
 		# angle = np.repeat(self.angles,self.full_nstim//2)
-		occluder_pos = np.linspace(-1.+(self.occluder_width/2.),1.-(self.occluder_width/2.),self.n_occluder_positions)*self.area_aspect
+		occluder_pos = np.linspace(	-1.+(self.occluder_width/2.),
+						1.-(self.occluder_width/2.),
+						self.n_occluder_positions)*self.area_aspect
 
 		# make a list of tuples (angle,position)
 		states = []
@@ -532,37 +573,33 @@ class OccludedDriftingBar(DriftingBar):
 		# now we shuffle the stimulus
 		states = [states[ii] for ii in self.permutation]
 
-		self.directions,self.occluder_pos = zip(*states)
-
-		self.startx = np.array([np.cos(np.deg2rad(aa)) for aa in self.directions])
-		self.starty = np.array([np.sin(np.deg2rad(aa)) for aa in self.directions])*self.area_aspect
-		self.stopx = np.array([np.cos(np.deg2rad(aa)+np.pi) for aa in self.directions])
-		self.stopy = np.array([np.sin(np.deg2rad(aa)+np.pi) for aa in self.directions])*self.area_aspect
+		self.orientation,self.occluder_pos = zip(*states)
 
 	def _buildstim(self):
 		self._make_orientations()
-		self.bar = Bar(				width=self.bar_width,
+		self._bar = Bar(			width=self.bar_width,
 							height=self.bar_height,
 							color=self.bar_color)
 
-		self.aperture = RectangularStencil(	width=self.occluder_height,
+		self._aperture = RectangularStencil(	width=self.occluder_height,
 							height=self.occluder_width*self.area_aspect,
 							polarity=0)
 
 	def _drawstim(self):
 
-		# get the current bar position
+		# get the current bar position (ROTATED 90o!)
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
 		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
-		x = self.startx[self.currentstim] + frac*(self.stopx[self.currentstim]-self.startx[self.currentstim])
-		y = self.starty[self.currentstim] + frac*(self.stopy[self.currentstim]-self.starty[self.currentstim])
+		x,y = get_current_bar_xy(	frac,
+						-self.orientation[self.currentstim]-90,
+						radius=max(1,self.area_aspect))
 
 		# enable stencil test, draw the aperture to the stencil buffer
 		gl.glEnable(gl.GL_STENCIL_TEST)
-		self.aperture.draw(y=self.occluder_pos[self.currentstim])
+		self._aperture.draw(y=self.occluder_pos[self.currentstim])
 
-		# draw the bar, disable stencil test
-		self.bar.draw(x,y,0,self.directions[self.currentstim])
+		# draw the bar (ROTATED 90o!), disable stencil test
+		self._bar.draw(y,x,0,-self.orientation[self.currentstim]-90)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -579,7 +616,6 @@ class DriftingGrating(Task):
 
 	def _make_orientations(self):
 
-		# orientations copied from drifting bar stimuli
 		orientation = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
 
 		# do the shuffling
@@ -611,9 +647,11 @@ class DriftingGrating(Task):
 		gl.glEnable(gl.GL_STENCIL_TEST)
 		self._aperture.draw()
 
+
 		# draw the texture, disable stencil test
 		self._texture.draw(	offset=self._phase,
-					angle=self.orientation[self.currentstim])
+					# correction for unit circle
+					angle=self.orientation[self.currentstim]+90)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass

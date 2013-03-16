@@ -58,7 +58,7 @@ class occluded_bars2(OccludedDriftingBar):
 	bar_color = (1.,1.,1.,1.)
 	bar_height = 2.
 	bar_width = 0.2
-	angles = (90,270)
+	angles = (0,180)
 	n_occluder_positions = 2
 	occluder_width = 2./n_occluder_positions
 	occluder_height = 2.
@@ -93,3 +93,23 @@ class occluded_bars4(occluded_bars2):
 	nstim = full_nstim
 	fullpermutation = occluded_bars2._gen.permutation(full_nstim)
 	permutation = fullpermutation[:nstim]
+
+class orientation_test(bars1):
+
+	taskname = 'bars_orientation_test'
+
+	nstim = 8
+	on_duration = 1
+	interval = 1
+	initblanktime = 0
+	finalblanktime = 0
+
+	def _make_orientations(self):
+		# start/stop positions and angles for each bar sweep - these are
+		# all good!
+		self.orientation = np.linspace(0.,360.,self.nstim,endpoint=False)
+
+	_olddraw = bars1._drawstim
+	def _drawstim(self):
+		self._olddraw()
+		print "%f deg" %self.orientation[self.currentstim]
