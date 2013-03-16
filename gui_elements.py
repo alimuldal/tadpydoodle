@@ -536,7 +536,7 @@ class AdjustPanel(wx.Panel):
 		# scaling
 		names = ['+','-']
 		buttons = [wx.Button(self,-1,name,size=(30,-1)) for name in names]
-		[bb.Bind(wx.EVT_BUTTON,self.onButton) for bb in buttons]
+		[bb.Bind(wx.EVT_LEFT_DOWN,self.onButton) for bb in buttons]
 		self.buttons.update(dict(zip(names,buttons)))
 
 		# shove them all in a FlexGridSizer
@@ -657,15 +657,13 @@ class AdjustPanel(wx.Panel):
 		if self.p_rb.GetValue():
 			group = self.p_textctls
 			prefix = 'p_'
-
 			# recalculate the photodiode bounding box
-			self.master.stimcanvas.recalc_photo_bounds()
+			recalc = self.master.stimcanvas.recalc_photo_bounds
 		else:
 			group = self.c_textctls
 			prefix = 'c_'
-
 			# recalculate the stimulus area bounding box
-			self.master.stimcanvas.recalc_stim_bounds()
+			recalc = self.master.stimcanvas.recalc_stim_bounds
 
 		# which direction? how far?
 		if label == 'UP':
@@ -676,10 +674,10 @@ class AdjustPanel(wx.Panel):
 			delta = -self.moveinc
 		elif label == 'LEFT':
 			control = group[prefix+'xpos']
-			delta = self.moveinc
+			delta = -self.moveinc
 		elif label == 'RIGHT':
 			control = group[prefix+'xpos']
-			delta = -self.moveinc
+			delta = +self.moveinc
 		elif label == '+':
 			control = group[prefix+'scale']
 			delta = self.scaleinc
@@ -697,7 +695,8 @@ class AdjustPanel(wx.Panel):
 		# update the text box string
 		control.SetValue(str(val))
 
-		# force a full re-draw
+		# recalculate bounding box and force a full re-draw
+		recalc()
 		self.master.stimcanvas.do_refresh_everything = True
 
 
@@ -727,10 +726,10 @@ class AdjustPanel(wx.Panel):
 			delta = -self.moveinc
 		elif wx.GetKeyState(wx.WXK_LEFT):
 			control = group[prefix+'xpos']
-			delta = self.moveinc
+			delta = -self.moveinc
 		elif wx.GetKeyState(wx.WXK_RIGHT):
 			control = group[prefix+'xpos']
-			delta = -self.moveinc
+			delta = self.moveinc
 		elif wx.GetKeyState(wx.WXK_PAGEUP):
 			control = group[prefix+'scale']
 			delta = self.scaleinc

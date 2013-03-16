@@ -229,10 +229,10 @@ class StimCanvas(GLCanvas):
 			aspect = self.master.current_task.area_aspect
 		except (AttributeError):
 			aspect = 1.
-
+		xres,yres = self.master.x_resolution,self.master.y_resolution
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 		self.stimbounds = ( 	int(np.floor(x-(scale+1))),
-			 		int(np.floor(y-(aspect*scale+1))),
+			 		int(np.floor((yres-y)-(aspect*scale+1))),
 			 		int(np.ceil(2*(scale+1))),
 			 		int(np.ceil(2*(aspect*scale+1)))
 			 		)
@@ -241,9 +241,10 @@ class StimCanvas(GLCanvas):
 
 	def recalc_photo_bounds(self):
 
+		xres,yres = self.master.x_resolution,self.master.y_resolution
 		x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
 		self.photobounds = ( 	int(np.floor(x-(scale+1))),
-			 		int(np.floor(y-(scale+1))),
+			 		int(np.floor((yres-y)-(scale+1))),
 			 		int(np.ceil(2*(scale+1))),
 			 		int(np.ceil(2*(scale+1)))
 			 		)
@@ -286,20 +287,34 @@ class StimCanvas(GLCanvas):
 
 		# the viewport is the same size as the stimulus resolution
 		xres,yres = self.master.x_resolution,self.master.y_resolution
-		gl.glViewport(0, 0, xres, yres)
+		gl.glViewport(0, 0, xres, yres)	# NB: display --> window (px)
 
 		# set an orthogonal projection - visible region will be from
 		# 0-->size in x and y, and from -1-->1 in z
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
-		gl.glOrtho(0,xres,0,yres,-1,1)
+		# gl.glOrtho(0,xres,0,yres,-1,1)	# origin in lower left
+		gl.glOrtho(0,xres,yres,0,-1,1)		# origin in upper left
 		# (left, right, bottom, top, near, far)
+
+		# gl.glRotate(90,0,0,1)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
 
+		# we want to correct for the fact that the stimulus canvas is
+		# rotated 90 deg relative to the preview. we only want to have
+		# to deal with this ONCE, such that x/y position in the preview
+		# canvas refers correctly to what gets projected onto the screen.
+
+		# enable scissor test so that only selected regions of the
+		# canvas are affected
+		gl.glEnable(gl.GL_SCISSOR_TEST)
+
 		# clear color and depth buffers
 		if self.do_refresh_everything:
+
+			gl.glScissor( 0, 0, xres, yres )
 
 			gl.glClearColor(0., 0., 0., 0.)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
@@ -319,11 +334,7 @@ class StimCanvas(GLCanvas):
 		# to figure out depth testing
 		#---------------------------------------------------------------
 
-		# enable scissor test so that only selected regions of the
-		# canvas are affected
-		gl.glEnable(gl.GL_SCISSOR_TEST)
-
-		# now draw/clear calls only affect the box where the stimulus is
+		# # only allowed to draw inside the stimbox
 		gl.glScissor( *self.stimbounds )
 
 		if self.do_refresh_stimbox:
@@ -353,7 +364,8 @@ class StimCanvas(GLCanvas):
 			# the x-axis flips it. this fixes a problem where task
 			# x-coordinates were inverted (also note that x and y
 			# are swapped, since the stimcanvas is rotated 90o)
-			gl.glScale(scale,-scale,1)
+			# gl.glScale(scale,-scale,1)
+			gl.glScale(scale,scale,1)
 			self.master.current_task._display()
 			gl.glPopMatrix()
 
@@ -643,11 +655,12 @@ class PreviewCanvas(GLCanvas):
 		# map coordinates on the preview window to coordinates
 		# in display space
 		preview_x,preview_y = event.GetX(),event.GetY()
+		print (preview_x,preview_y)
 
 		p_w,p_h = self.currsize
 		d_h,d_w = self.master.x_resolution,self.master.y_resolution
 
-		display_x = (d_w)*(1. - float(preview_x)/p_w)
+		display_x = (d_w)*(float(preview_x)/p_w)
 		display_y = (d_h)*(1. - float(preview_y)/p_h)
 
 		# aaaargh hellish callbacks!

@@ -144,6 +144,9 @@ class position_test(widescreen_dotflash1):
 	xpos,ypos = np.meshgrid(_ux,_uy)
 	xpos,ypos = xpos.flatten(),ypos.flatten()
 
+	dot_color = (0,0,0,0)
+	background_color = (1,1,1,1)
+
 	nstim = np.prod(gridshape)
 	initblanktime = 0
 	finalblanktime = 0
@@ -156,7 +159,7 @@ class position_test(widescreen_dotflash1):
 	_olddraw = widescreen_dotflash1._drawstim
 	def _drawstim(self):
 		self._olddraw()
-		print (self.xpos[self.currentstim],self.ypos[self.currentstim])
+		print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],self.ypos[self.currentstim])
 
 # class widescreen_dotflash3(widescreen_dotflash1):
 # 	taskname = 'widescreen_dotflash3'

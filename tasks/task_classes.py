@@ -495,7 +495,7 @@ class DotFlash(Task):
 		pass
 
 	def _drawstim(self):
-		# draw the dot in the current position (ROTATED 90o!)
+		# draw the dot in the current position
 		self._dot.draw(self.ypos[self.currentstim],self.xpos[self.currentstim],0.)
 
 class DriftingBar(Task):
