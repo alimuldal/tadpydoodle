@@ -314,7 +314,7 @@ class StimCanvas(GLCanvas):
 		# clear color and depth buffers
 		if self.do_refresh_everything:
 
-			gl.glScissor( 0, 0, xres, yres )
+			gl.glScissor( 0,0,xres,yres )
 
 			gl.glClearColor(0., 0., 0., 0.)
 			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
@@ -421,6 +421,9 @@ class StimCanvas(GLCanvas):
 				# back buffer
 				fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 				fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
+
+				gl.glClearColor(0.,0.,0.,0.)
+				gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
 				if self.everything_changed:
 					# blit the whole viewport area
@@ -655,7 +658,7 @@ class PreviewCanvas(GLCanvas):
 		# map coordinates on the preview window to coordinates
 		# in display space
 		preview_x,preview_y = event.GetX(),event.GetY()
-		print (preview_x,preview_y)
+		# print (preview_x,preview_y)
 
 		p_w,p_h = self.currsize
 		d_h,d_w = self.master.x_resolution,self.master.y_resolution

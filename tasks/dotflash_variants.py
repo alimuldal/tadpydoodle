@@ -95,14 +95,10 @@ class widescreen_dotflash1(DotFlash):
 	area_aspect = 2 	# twice as wide as high
 
 	# stimulus timing
-	# initblanktime = 2.
-	# finalblanktime = 10.
-	# interval = 8
-	# on_duration = 1
-	initblanktime = 0
-	finalblanktime = 0
-	interval = 1
-	on_duration = interval
+	initblanktime = 2.
+	finalblanktime = 10.
+	interval = 8
+	on_duration = 1
 
 	# photodiode triggering parameters
 	scan_hz = 5.
