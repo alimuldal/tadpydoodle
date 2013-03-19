@@ -94,9 +94,13 @@ class occluded_bars4(occluded_bars2):
 	fullpermutation = occluded_bars2._gen.permutation(full_nstim)
 	permutation = fullpermutation[:nstim]
 
+################################################################################
+# tests
+
 class occluded_test(occluded_bars4):
 
 	taskname = 'occluded_test'
+	subclass = 'test_stimuli'
 
 	n_occluder_positions = 4
 	occluder_width = 2./n_occluder_positions
@@ -116,6 +120,7 @@ class occluded_test(occluded_bars4):
 class orientation_test(bars1):
 
 	taskname = 'bars_orientation_test'
+	subclass = 'test_stimuli'
 
 	nstim = 8
 	on_duration = 1

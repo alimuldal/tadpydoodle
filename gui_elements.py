@@ -571,7 +571,7 @@ class AdjustPanel(wx.Panel):
 		p_textctls = []
 		for nn in attrnames:
 			ref = AttributeRef(self.master,nn)
-			ctrl = wx.TextCtrl(self,size=(60,-1),value=str(ref.get()),style=wx.TE_PROCESS_ENTER)
+			ctrl = wx.TextCtrl(self,size=(60,-1),value=str(round(ref.get(),2)),style=wx.TE_PROCESS_ENTER)
 			ctrl.Bind(wx.EVT_TEXT_ENTER,self.onText)
 			ctrl.ref = ref
 			p_textctls.append(ctrl)
@@ -603,7 +603,7 @@ class AdjustPanel(wx.Panel):
 		c_textctls = []
 		for nn in attrnames:
 			ref = AttributeRef(self.master,nn)
-			ctrl = wx.TextCtrl(self,size=(60,-1),value=str(ref.get()),style=wx.TE_PROCESS_ENTER)
+			ctrl = wx.TextCtrl(self,size=(60,-1),value=str(round(ref.get(),2)),style=wx.TE_PROCESS_ENTER)
 			ctrl.Bind(wx.EVT_TEXT_ENTER,self.onText)
 			ctrl.ref = ref
 			c_textctls.append(ctrl)
@@ -688,6 +688,7 @@ class AdjustPanel(wx.Panel):
 		# reference to the attribute of self.master that we change
 		val = control.ref.get()
 		val += delta
+		val = round(val,2)
 
 		# this changes the necessary attribute of self.master
 		control.ref.set(val)
@@ -741,6 +742,7 @@ class AdjustPanel(wx.Panel):
 
 		val = control.ref.get()
 		val += delta
+		val = round(val,2)
 		control.ref.set(val)
 		control.SetValue(str(val))
 

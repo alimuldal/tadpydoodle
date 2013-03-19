@@ -128,9 +128,13 @@ class squarewave_nointerval_2hz_2(squarewave_nointerval2):
 	taskname = 'squarewave_nointerval_2hz_2'
 	scan_hz = 2.
 
+################################################################################
+# tests
+
 class orientation_test(squarewave1):
 
 	taskname = 'grating_orientation_test'
+	subclass = 'test_stimuli'
 
 	nstim = 8
 	on_duration = 1

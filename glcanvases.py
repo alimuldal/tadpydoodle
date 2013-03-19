@@ -610,6 +610,7 @@ class PreviewCanvas(GLCanvas):
 
 		# we can only draw after the master canvas has already done so,
 		# otherwise we won't have an OpenGL context to draw into
+		self.stimcanvas.do_refresh_everything = True
 		if self.stimcanvas.done_postinit:
 			self.currsize = self.GetSize()
 			self.onDraw()
@@ -660,8 +661,8 @@ class PreviewCanvas(GLCanvas):
 		p_w,p_h = self.currsize
 		d_h,d_w = self.master.x_resolution,self.master.y_resolution
 
-		display_x = (d_w)*(float(preview_x)/p_w)
-		display_y = (d_h)*(1. - float(preview_y)/p_h)
+		display_x = round((d_w)*(float(preview_x)/p_w),2)
+		display_y = round((d_h)*(1. - float(preview_y)/p_h),2)
 
 		# aaaargh hellish callbacks!
 		if mode == 1:
@@ -708,6 +709,7 @@ class PreviewCanvas(GLCanvas):
 
 		val = control.ref.get()
 		val += delta
+		val = round(val,2)
 		control.ref.set(val)
 		control.SetValue(str(val))
 

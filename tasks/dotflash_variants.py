@@ -171,8 +171,12 @@ class position_test(widescreen_dotflash1):
 # 	part = 4
 # 	permutation = fullpermutation[(part-1)*nstim:part*nstim]
 
+################################################################################
+# tests
+
 class position_test(widescreen_dotflash1):
 	taskname = 'position_test'
+	subclass = 'test_stimuli'
 
 	area_aspect = 2
 	gridshape = (8,4)
