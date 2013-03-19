@@ -94,6 +94,25 @@ class occluded_bars4(occluded_bars2):
 	fullpermutation = occluded_bars2._gen.permutation(full_nstim)
 	permutation = fullpermutation[:nstim]
 
+class occluded_test(occluded_bars4):
+
+	taskname = 'occluded_test'
+
+	n_occluder_positions = 4
+	occluder_width = 2./n_occluder_positions
+
+	full_nstim = len(occluded_bars2.angles)*n_occluder_positions
+	nstim = full_nstim
+	fullpermutation = occluded_bars2._gen.permutation(full_nstim)
+	permutation = fullpermutation[:nstim]
+
+	_olddraw = occluded_bars4._drawstim
+	def _drawstim(self):
+		self._olddraw()
+		print "orientation = %.2fdeg\toccluder x = %.2f" %(
+			self.orientation[self.currentstim],self.occluder_pos[self.currentstim]
+			)
+
 class orientation_test(bars1):
 
 	taskname = 'bars_orientation_test'

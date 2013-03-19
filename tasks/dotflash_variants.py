@@ -170,3 +170,32 @@ class position_test(widescreen_dotflash1):
 # 	nstim = widescreen_dotflash1.nstim
 # 	part = 4
 # 	permutation = fullpermutation[(part-1)*nstim:part*nstim]
+
+class position_test(widescreen_dotflash1):
+	taskname = 'position_test'
+
+	area_aspect = 2
+	gridshape = (8,4)
+	gridlim = (0.8,0.8)
+	_ux = np.linspace(-1.,1.,gridshape[0])*gridlim[0]*area_aspect
+	_uy = np.linspace(-1.,1.,gridshape[1])*gridlim[1]
+	xpos,ypos = np.meshgrid(_ux,_uy)
+	xpos,ypos = xpos.flatten(),ypos.flatten()
+
+	dot_color = (0,0,0,0)
+	background_color = (1,1,1,1)
+
+	nstim = np.prod(gridshape)
+	initblanktime = 0
+	finalblanktime = 0
+	interval = 1
+	on_duration = interval
+
+	def _make_positions(self):
+		pass
+
+	_olddraw = widescreen_dotflash1._drawstim
+	def _drawstim(self):
+		self._olddraw()
+		print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],self.ypos[self.currentstim])
+

@@ -805,6 +805,7 @@ class LogPanel(wx.Panel):
 		self.master.stimcanvas.frametimes.clear()
 		self.master.stimcanvas.stimdraws.clear()
 		self.master.stimcanvas.alldraws.clear()
+		self.master.stimcanvas.photodraws.clear()
 
 	def onDiagnosticPlot(self,event=None):
 
@@ -864,6 +865,7 @@ class LogPanel(wx.Panel):
 		ax1.plot(np.arange(nframes),mean_ft,'-k',alpha=0.75,label='Mean drawtime',lw=2)
 		ax1.axhline(y=self.master.min_delta_t*1E-3,ls='--',c='k',alpha=0.75,label='Minimum drawtime')
 
+		ax1.set_xlim(0,self.master.log_nframes)
 		ax1.set_ylim(0,0.02)
 		ax1.set_xlabel('Frame #')
 		ax1.legend()

@@ -293,11 +293,10 @@ class StimCanvas(GLCanvas):
 		# 0-->size in x and y, and from -1-->1 in z
 		gl.glMatrixMode(gl.GL_PROJECTION)
 		gl.glLoadIdentity()
-		# gl.glOrtho(0,xres,0,yres,-1,1)	# origin in lower left
-		gl.glOrtho(0,xres,yres,0,-1,1)		# origin in upper left
+		gl.glOrtho(0,xres,0,yres,-1,1)	# origin in lower left
+		# gl.glOrtho(0,xres,yres,0,-1,1)		# origin in upper left
 		# (left, right, bottom, top, near, far)
 
-		# gl.glRotate(90,0,0,1)
 
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glLoadIdentity()
@@ -359,20 +358,17 @@ class StimCanvas(GLCanvas):
 		# draw the current stimulus state
 		if self.master.run_task:
 			gl.glPushMatrix()
-			gl.glTranslate(x, y, 0)
-			# OK, this is a total hack - giving a negative scale in
-			# the x-axis flips it. this fixes a problem where task
-			# x-coordinates were inverted (also note that x and y
-			# are swapped, since the stimcanvas is rotated 90o)
-			# gl.glScale(scale,-scale,1)
+			gl.glTranslate(x, yres-y, 0)
 			gl.glScale(scale,scale,1)
+			# rotate 90o to account for rotation of the projector
+			gl.glRotate(-90,0,0,1)
 			self.master.current_task._display()
 			gl.glPopMatrix()
 
 		# draw the crosshairs
 		if self.master.show_crosshairs:
 			gl.glPushMatrix()
-			gl.glTranslate(x, y, 0)
+			gl.glTranslate(x, yres-y, 0)
 			gl.glScale(scale,scale,1)
 			gl.glCallList(self.crosshairlist)
 			gl.glScale(1,self.stimbox_aspect,1)
@@ -422,10 +418,11 @@ class StimCanvas(GLCanvas):
 				fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
 				fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
 
-				gl.glClearColor(0.,0.,0.,0.)
-				gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
 				if self.everything_changed:
+
+					gl.glClearColor(0.,0.,0.,0.)
+					gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
 					# blit the whole viewport area
 					x0,y0,w,h = 0,0,xres,yres
 					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,

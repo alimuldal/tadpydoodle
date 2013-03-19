@@ -83,10 +83,10 @@ def get_current_bar_xy(frac,angle,radius=1,origin=(0,0)):
 	"""
 	x0,y0 = origin
 	rads = np.deg2rad(angle)
-	sx = x0+radius*np.sin(rads)
-	sy = y0+radius*np.cos(rads)
-	ex = x0+radius*np.sin(rads+np.pi)
-	ey = y0+radius*np.cos(rads+np.pi)
+	sx = x0+radius*np.cos(rads+np.pi)
+	sy = y0+radius*np.sin(rads+np.pi)
+	ex = x0+radius*np.cos(rads)
+	ey = y0+radius*np.sin(rads)
 	return sx + frac*(ex-sx),sy + frac*(ey-sy)
 
 class Dot(object):
@@ -295,8 +295,10 @@ class GratingTextureQuad(object):
 		gl.glLoadIdentity()
 
 		gl.glBindTexture(gl.GL_TEXTURE_1D,self.texture)
-		gl.glTranslate(offset,0,0)
-		gl.glRotatef(angle,0,0,1)
+
+		# we move in the opposite direction in texture coords
+		gl.glTranslate(-offset,0,0)
+		gl.glRotatef(-angle,0,0,1)
 		gl.glCallList(self.texlist)
 
 		# we pop and go BACK to the modelview matrix for safety!!!
@@ -496,7 +498,7 @@ class DotFlash(Task):
 
 	def _drawstim(self):
 		# draw the dot in the current position
-		self._dot.draw(self.ypos[self.currentstim],self.xpos[self.currentstim],0.)
+		self._dot.draw(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
 
 class DriftingBar(Task):
 	"""
@@ -534,7 +536,7 @@ class DriftingBar(Task):
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
 		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
 		x,y = get_current_bar_xy(	frac,
-						-self.orientation[self.currentstim]-90,
+						self.orientation[self.currentstim],
 						radius=max(1,self.area_aspect))
 
 		# enable stencil test, draw the aperture to the stencil buffer
@@ -542,7 +544,7 @@ class DriftingBar(Task):
 		self._aperture.draw()
 
 		# draw the bar (ROTATED 90o!), disable stencil test
-		self._bar.draw(y,x,0,-self.orientation[self.currentstim]-90)
+		self._bar.draw(x,y,0,self.orientation[self.currentstim])
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -581,8 +583,8 @@ class OccludedDriftingBar(DriftingBar):
 							height=self.bar_height,
 							color=self.bar_color)
 
-		self._aperture = RectangularStencil(	width=self.occluder_height,
-							height=self.occluder_width*self.area_aspect,
+		self._aperture = RectangularStencil(	width=self.occluder_width*self.area_aspect,
+							height=self.occluder_height,
 							polarity=0)
 
 	def _drawstim(self):
@@ -591,15 +593,15 @@ class OccludedDriftingBar(DriftingBar):
 		bar_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
 		frac = bar_dt/(self.offtimes[self.currentstim] - self.ontimes[self.currentstim])
 		x,y = get_current_bar_xy(	frac,
-						-self.orientation[self.currentstim]-90,
+						self.orientation[self.currentstim],
 						radius=max(1,self.area_aspect))
 
 		# enable stencil test, draw the aperture to the stencil buffer
 		gl.glEnable(gl.GL_STENCIL_TEST)
-		self._aperture.draw(y=self.occluder_pos[self.currentstim])
+		self._aperture.draw(x=self.occluder_pos[self.currentstim])
 
 		# draw the bar (ROTATED 90o!), disable stencil test
-		self._bar.draw(y,x,0,-self.orientation[self.currentstim]-90)
+		self._bar.draw(x,y,0,self.orientation[self.currentstim])
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -651,7 +653,7 @@ class DriftingGrating(Task):
 		# draw the texture, disable stencil test
 		self._texture.draw(	offset=self._phase,
 					# correction for unit circle
-					angle=self.orientation[self.currentstim]+90)
+					angle=self.orientation[self.currentstim])
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
