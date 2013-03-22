@@ -11,6 +11,7 @@ import OpenGL.GL as gl
 import OpenGL.GLU as glu
 # import OpenGL.GLUT as glut
 import OpenGL.GL.framebufferobjects as fbo
+from OpenGL.GL import shaders
 # import OpenGL.GLX as glx
 
 import wx
@@ -77,8 +78,10 @@ class StimCanvas(GLCanvas):
 		canvas has been created because it requires an OpenGL context!
 		"""
 		self.SetCurrent()
-		self.makedisplaylists()
 		self.initFBO()
+		self.initShader()
+		self.update_gamma()
+		self.makedisplaylists()
 
 		# clear values
 		gl.glClearStencil(0)
@@ -86,6 +89,9 @@ class StimCanvas(GLCanvas):
 
 		# blending is costly
 		gl.glDisable(gl.GL_BLEND)
+
+		# enable scissor testing for conditional drawing
+		gl.glEnable(gl.GL_SCISSOR_TEST)
 
 		# # hinting, probably probably ignored by implementation
 		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
@@ -95,6 +101,29 @@ class StimCanvas(GLCanvas):
 
 	def makedisplaylists(self):
 		""" Compile display list for the crosshairs """
+
+		# display list to set up the viewport/projection
+		#---------------------------------------------------------------
+		viewlist = gl.glGenLists(1)
+		gl.glNewList(viewlist, gl.GL_COMPILE)
+
+		# the viewport is the same size as the stimulus resolution
+		xres,yres = self.master.x_resolution,self.master.y_resolution
+		gl.glViewport(0, 0, xres, yres)	# NB: display --> window (px)
+
+		# set an orthogonal projection - visible region will be from
+		# 0-->size in x and y, and from -1-->1 in z
+		gl.glMatrixMode(gl.GL_PROJECTION)
+		gl.glLoadIdentity()
+		gl.glOrtho(0,xres,0,yres,-1,1)	# origin in lower left
+		# (left, right, bottom, top, near, far)
+
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glLoadIdentity()
+
+		gl.glEndList()
+		self.viewlist = viewlist
+		#---------------------------------------------------------------
 
 		# display list for the stimulus box
 		#---------------------------------------------------------------
@@ -113,6 +142,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
+  		self.stimboxlist = stimboxlist
 		#---------------------------------------------------------------
 
 		# display list for the crosshairs
@@ -138,10 +168,83 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
+  		self.crosshairlist = crosshairlist
 		#---------------------------------------------------------------
 
-  		self.stimboxlist = stimboxlist
-  		self.crosshairlist = crosshairlist
+		# display list for the photodiode trigger
+		#---------------------------------------------------------------
+		photolist = gl.glGenLists(1)
+		gl.glNewList(photolist, gl.GL_COMPILE)
+
+		gl.glBegin(gl.GL_QUADS)
+		gl.glVertex2f(-1.,  1.)
+		gl.glVertex2f( 1.,  1.)
+		gl.glVertex2f( 1., -1.)
+		gl.glVertex2f(-1., -1.)
+		gl.glEnd()
+
+		gl.glEndList()
+  		self.photolist = photolist
+		#---------------------------------------------------------------
+
+		# display list for the stimulus background
+		#---------------------------------------------------------------
+		stimbglist = gl.glGenLists(1)
+		gl.glNewList(stimbglist, gl.GL_COMPILE)
+
+		gl.glBegin(gl.GL_QUADS)
+		gl.glVertex2f(-1.,  1.)
+		gl.glVertex2f( 1.,  1.)
+		gl.glVertex2f( 1., -1.)
+		gl.glVertex2f(-1., -1.)
+		gl.glEnd()
+
+		gl.glEndList()
+  		self.stimbglist = stimbglist
+		#---------------------------------------------------------------
+
+		xres,yres = self.master.x_resolution,self.master.y_resolution
+
+		# display list for drawing the FBO contents as a texture
+		#---------------------------------------------------------------
+		fbolist = gl.glGenLists(1)
+		gl.glNewList(fbolist, gl.GL_COMPILE)
+
+		# bind the fbo contents as a texture
+		gl.glBindTexture(gl.GL_TEXTURE_2D,self.fbo_texture)
+		gl.glEnable(gl.GL_TEXTURE_2D)
+
+		# enable the shader to apply gamma correction
+		shaders.glUseProgram(self.gamma_shader)
+
+		# load the identity matrix
+		gl.glMatrixMode(gl.GL_MODELVIEW)
+		gl.glPushMatrix()
+		gl.glLoadIdentity()
+
+		# draw the texture
+		gl.glScissor(0,0,xres,yres)
+		gl.glColor4f(1.,1.,1.,1.)
+		gl.glBegin( gl.GL_QUADS )
+		gl.glTexCoord2f( 0, 1 );	gl.glVertex2f( 0,    yres )
+		gl.glTexCoord2f( 0, 0 );	gl.glVertex2f( 0,    0 )
+		gl.glTexCoord2f( 1, 0 );	gl.glVertex2f( xres, 0 )
+		gl.glTexCoord2f( 1, 1 );	gl.glVertex2f( xres, yres )
+		gl.glEnd()
+
+		gl.glPopMatrix()
+		gl.glDisable(gl.GL_TEXTURE_2D)
+
+		# unbind the texture!
+		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
+
+		# disable the shader!
+		shaders.glUseProgram(0)
+
+		gl.glEndList()
+
+		self.fbolist = fbolist
+		#---------------------------------------------------------------
 
   		pass
 
@@ -220,6 +323,52 @@ class StimCanvas(GLCanvas):
 
 		pass
 
+	def initShader(self):
+
+		vshader_str = """
+		#version 130
+		// Vertex program
+		void main() {
+			gl_Position = ftransform();
+			gl_TexCoord[0] = gl_MultiTexCoord0;
+		}
+		"""
+
+		VERTEX_SHADER = shaders.compileShader(vshader_str, gl.GL_VERTEX_SHADER)
+
+		fshader_str = """
+		#version 130
+		// Fragment program
+		uniform float gamma;
+		uniform sampler2D sceneBuffer;
+		void main() {
+			vec2 uv = gl_TexCoord[0].xy;
+			vec3 color = texture2D(sceneBuffer, uv).rgb;
+			gl_FragColor.rgb = pow(color, vec3(1.0 / gamma));
+			gl_FragColor.a = 1.0;
+		}
+		"""
+
+		FRAGMENT_SHADER = shaders.compileShader(fshader_str, gl.GL_FRAGMENT_SHADER)
+
+		self.gamma_shader = shaders.compileProgram(VERTEX_SHADER,FRAGMENT_SHADER)
+
+		# in order to pass uniform values to the shader we need to know
+		# where these values are stored within the program object. we
+		# store this info in a dict for easy access later on.
+		self.uniform_locations = {
+			'gamma': shaders.glGetUniformLocation( self.gamma_shader, 'gamma' ),
+		}
+
+		pass
+
+	def update_gamma(self):
+
+		# update the uniform float gamma value used by the pixel shader
+		gl.glUseProgram(self.gamma_shader)
+		shaders.glUniform1f( self.uniform_locations['gamma'],self.master.gamma)
+		gl.glUseProgram(0)
+
 	def recalc_stim_bounds(self):
 		"""
 		recalculate the bounding boxes for the stimulus area
@@ -278,37 +427,14 @@ class StimCanvas(GLCanvas):
 		"""
 		self.SetCurrent()
 
-		# if we're previewing, we will draw to the offscreen framebuffer
-		if self.master.show_preview:
-			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
-		else:
-			# otherwise, just draw to the normal back buffer
-			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
+		# draw to the offscreen framebuffer
+		fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,self.framebuffer)
 
-		# the viewport is the same size as the stimulus resolution
+		# set up the viewport and projection matrix, switch to modelview
+		# mode and load the identity matrix
+		gl.glCallList(self.viewlist)
+
 		xres,yres = self.master.x_resolution,self.master.y_resolution
-		gl.glViewport(0, 0, xres, yres)	# NB: display --> window (px)
-
-		# set an orthogonal projection - visible region will be from
-		# 0-->size in x and y, and from -1-->1 in z
-		gl.glMatrixMode(gl.GL_PROJECTION)
-		gl.glLoadIdentity()
-		gl.glOrtho(0,xres,0,yres,-1,1)	# origin in lower left
-		# gl.glOrtho(0,xres,yres,0,-1,1)		# origin in upper left
-		# (left, right, bottom, top, near, far)
-
-
-		gl.glMatrixMode(gl.GL_MODELVIEW)
-		gl.glLoadIdentity()
-
-		# we want to correct for the fact that the stimulus canvas is
-		# rotated 90 deg relative to the preview. we only want to have
-		# to deal with this ONCE, such that x/y position in the preview
-		# canvas refers correctly to what gets projected onto the screen.
-
-		# enable scissor test so that only selected regions of the
-		# canvas are affected
-		gl.glEnable(gl.GL_SCISSOR_TEST)
 
 		# clear color and depth buffers
 		if self.do_refresh_everything:
@@ -333,27 +459,28 @@ class StimCanvas(GLCanvas):
 		# to figure out depth testing
 		#---------------------------------------------------------------
 
-		# # only allowed to draw inside the stimbox
-		gl.glScissor( *self.stimbounds )
+		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 
 		if self.do_refresh_stimbox:
+			# draw the stimulus background. we do this even if the
+			# task isn't running yet so that the correct background
+			# color is displayed in advance.
+			gl.glPushMatrix()
+			gl.glTranslate(x, yres-y, 0)
+			gl.glScale(scale,scale*self.stimbox_aspect,1)
 
-			# clear the stimulus area using the task background
-			# color. we do this even if the task isn't running yet
-			# so that the correct background color is displayed in
-			# advance.
 			try:
-				gl.glClearColor(*self.master.current_task.background_color)
+				gl.glColor(*self.master.current_task.background_color)
 			except AttributeError:
-				gl.glClearColor(0.,0.,0.,0.)
+				gl.glColor(0.,0.,0.,0.)
 
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
-
+			gl.glScissor(*self.stimbounds)
+			gl.glCallList(self.stimbglist)
 			self.stimbox_changed = True
 			self.do_refresh_stimbox = False
-			# print "refresh_stimbox: %f" %time.time()
+			gl.glPopMatrix()
 
-		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
+			# print "refresh_stimbox: %f" %time.time()
 
 		# draw the current stimulus state
 		if self.master.run_task:
@@ -362,6 +489,7 @@ class StimCanvas(GLCanvas):
 			gl.glScale(scale,scale,1)
 			# rotate 90o to account for rotation of the projector
 			gl.glRotate(-90,0,0,1)
+			gl.glScissor(*self.stimbounds)
 			self.master.current_task._display()
 			gl.glPopMatrix()
 
@@ -370,6 +498,7 @@ class StimCanvas(GLCanvas):
 			gl.glPushMatrix()
 			gl.glTranslate(x, yres-y, 0)
 			gl.glScale(scale,scale,1)
+			gl.glScissor(*self.stimbounds)
 			gl.glCallList(self.crosshairlist)
 			gl.glScale(1,self.stimbox_aspect,1)
 			gl.glCallList(self.stimboxlist)
@@ -378,26 +507,26 @@ class StimCanvas(GLCanvas):
 		# draw the photodiode
 		if self.do_refresh_photodiode:
 
-			# we 'draw' the photodiode by selectively clearing a
-			# rectangle in pixel coordinates
-			gl.glScissor( *self.photobounds )
+			x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
 
-			# set our clear color according to whether the
-			# photodiode is ON or OFF
+			gl.glPushMatrix()
+			gl.glTranslate(x, yres-y, 0)
+			gl.glScale(scale,scale,1)
+
+			# set our color according to whether the photodiode is
+			# ON or OFF
 			if self.master.show_photodiode:
-				gl.glClearColor(1,1,1,1)
+				gl.glColor(1,1,1,1)
 			else:
-				gl.glClearColor(0,0,0,1)
+				gl.glColor(0,0,0,1)
 
-			# clear the region containing the photodiode
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+			gl.glScissor(*self.photobounds)
+			gl.glCallList(self.photolist)
+			gl.glPopMatrix()
 
 			self.photodiode_changed = True
 			self.do_refresh_photodiode = False
 			# print "refresh_photodiode: %f" %time.time()
-
-		# disable scissor test, any part of the screen is accessible
-		gl.glDisable(gl.GL_SCISSOR_TEST)
 
 		# if we're logging framerate, also record what was being redrawn
 		if self.master.log_framerate:
@@ -408,44 +537,30 @@ class StimCanvas(GLCanvas):
 		# did anything change during this loop iteration?
 		if (self.stimbox_changed or self.photodiode_changed or self.everything_changed):
 
-			# if we're rendering offscreen we now need to blit the
-			# contents of the FBO to the back buffer so that they
-			# will be made visible when we call SwapBuffers()
-			if self.master.show_preview:
+			# since we're rendering offscreen we now need to copy
+			# the contents of the FBO to the back buffer so that
+			# they will be made visible when we call SwapBuffers()
 
-				# we read from the framebuffer and write to the
-				# back buffer
-				fbo.glBindFramebuffer(	fbo.GL_READ_FRAMEBUFFER,self.framebuffer)
-				fbo.glBindFramebuffer(	fbo.GL_DRAW_FRAMEBUFFER,0)
+			# bind to the back buffer
+			fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER,0)
 
-				if self.everything_changed:
+			# # conditional updates?
+			# if self.stimbox_changed:
+			# 	gl.glScissor(*self.stimbounds)
+			# 	gl.glCallList(self.fbolist)
 
-					gl.glClearColor(0.,0.,0.,0.)
-					gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+			# if self.photodiode_changed:
+			# 	gl.glScissor(*self.photobounds)
+			# 	gl.glCallList(self.fbolist)
 
-					# blit the whole viewport area
-					x0,y0,w,h = 0,0,xres,yres
-					fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-								x0,y0,x0+w,y0+h,
-								gl.GL_COLOR_BUFFER_BIT,
-								gl.GL_NEAREST)
+			# if self.everything_changed:
+			# 	gl.glScissor(0,0,xres,yres)
+			# 	gl.glCallList(self.fbolist)
 
-				else:
-					if self.stimbox_changed:
-						# blit just the stimulus area
-						x0,y0,w,h = self.stimbounds
-						fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-									x0,y0,x0+w,y0+h,
-									gl.GL_COLOR_BUFFER_BIT,
-									gl.GL_NEAREST)
-
-					if self.photodiode_changed:
-						# blit just the photodiode area
-						x0,y0,w,h = self.photobounds
-						fbo.glBlitFramebuffer(	x0,y0,x0+w,y0+h,
-									x0,y0,x0+w,y0+h,
-									gl.GL_COLOR_BUFFER_BIT,
-									gl.GL_NEAREST)
+			# call a display list that draws the framebuffer
+			# contents as a textured quad. in doing so, we apply a
+			# software gamma correction using a pixel shader
+			gl.glCallList(self.fbolist)
 
 			# swap the front and back buffers so that the changes
 			# are made visible
@@ -463,7 +578,7 @@ class StimCanvas(GLCanvas):
 
 		else:
 			# nothing has changed during this rendering loop, so we
-			# don't need to blit anything or call SwapBuffers on
+			# don't need to copy anything or call SwapBuffers on
 			# either the main canvas or the preview canvas
 			pass
 
@@ -557,23 +672,23 @@ class PreviewCanvas(GLCanvas):
 	def postinit(self):
 		""" called in onPaint if self.done_postinit == False """
 
-		# display list for setting up the projection
-		# --------------------------------------------------------------
-		self.projectionlist = gl.glGenLists(1)
-		gl.glNewList(self.projectionlist, gl.GL_COMPILE)
-
-		gl.glMatrixMode(gl.GL_PROJECTION)
-		gl.glLoadIdentity()
-		gl.glOrtho(0,1,0,1,0,1)
-
-		gl.glEndList()
-		# --------------------------------------------------------------
-
 		# display list for the texture that we will use to display the
 		# contents of the offscreen
 		# --------------------------------------------------------------
 		self.texlist = gl.glGenLists(1)
 		gl.glNewList(self.texlist, gl.GL_COMPILE)
+
+		# disable scissor test
+		gl.glDisable(gl.GL_SCISSOR_TEST)
+
+		# set up the viewport and projection matrix
+		gl.glViewport(0,0,*self.currsize)
+		gl.glMatrixMode(gl.GL_PROJECTION)
+		gl.glLoadIdentity()
+		gl.glOrtho(0,1,0,1,0,1)
+
+		# bind the master's FBO texture
+		gl.glBindTexture(gl.GL_TEXTURE_2D,self.stimcanvas.fbo_texture)
 
 		# rotate the texture 90o counterclockwise
 		gl.glEnable(gl.GL_TEXTURE_2D)
@@ -601,6 +716,9 @@ class PreviewCanvas(GLCanvas):
 		# unbind the texture!
 		gl.glBindTexture(gl.GL_TEXTURE_2D,0)
 
+		# re-enable scissor test
+		gl.glEnable(gl.GL_SCISSOR_TEST)
+
 		gl.glEndList()
 		# --------------------------------------------------------------
 
@@ -626,14 +744,6 @@ class PreviewCanvas(GLCanvas):
 		if not self.done_postinit:
 			self.postinit()
 			self.done_postinit = True
-
-		gl.glViewport(0,0,*self.currsize)
-
-		# set up the projection
-		gl.glCallList(self.projectionlist)
-
-		# bind the master's FBO texture
-		gl.glBindTexture(gl.GL_TEXTURE_2D,self.stimcanvas.fbo_texture)
 
 		# call the display list to draw the texture
 		gl.glCallList(self.texlist)

@@ -658,12 +658,12 @@ class AdjustPanel(wx.Panel):
 			group = self.p_textctls
 			prefix = 'p_'
 			# recalculate the photodiode bounding box
-			recalc = self.master.stimcanvas.recalc_photo_bounds
+			# recalc = self.master.stimcanvas.recalc_photo_bounds
 		else:
 			group = self.c_textctls
 			prefix = 'c_'
 			# recalculate the stimulus area bounding box
-			recalc = self.master.stimcanvas.recalc_stim_bounds
+			# recalc = self.master.stimcanvas.recalc_stim_bounds
 
 		# which direction? how far?
 		if label == 'UP':
@@ -697,7 +697,7 @@ class AdjustPanel(wx.Panel):
 		control.SetValue(str(val))
 
 		# recalculate bounding box and force a full re-draw
-		recalc()
+		# recalc()
 		self.master.stimcanvas.do_refresh_everything = True
 
 
@@ -708,14 +708,14 @@ class AdjustPanel(wx.Panel):
 			prefix = 'p_'
 
 			# recalculate the photodiode bounding box
-			recalc = self.master.stimcanvas.recalc_photo_bounds
+			# recalc = self.master.stimcanvas.recalc_photo_bounds
 
 		elif wx.GetKeyState(wx.WXK_F2):
 			group = self.c_textctls
 			prefix = 'c_'
 
 			# recalculate the stimulus area bounding box
-			recalc = self.master.stimcanvas.recalc_stim_bounds
+			# recalc = self.master.stimcanvas.recalc_stim_bounds
 		else:
 			return
 
@@ -747,7 +747,7 @@ class AdjustPanel(wx.Panel):
 		control.SetValue(str(val))
 
 		# recalculate bounding box and force a full re-draw
-		recalc()
+		# recalc()
 		self.master.stimcanvas.do_refresh_everything = True
 
 	def onText(self,event):
@@ -764,8 +764,8 @@ class AdjustPanel(wx.Panel):
 		caller.SetValue(str(caller.ref.get()))
 
 		# recalculate the bounding boxes & re-draw
-		self.master.stimcanvas.recalc_photo_bounds()
-		self.master.stimcanvas.recalc_stim_bounds()
+		# self.master.stimcanvas.recalc_photo_bounds()
+		# self.master.stimcanvas.recalc_stim_bounds()
 		self.master.stimcanvas.do_refresh_everything = True
 
 class LogPanel(wx.Panel):
@@ -895,10 +895,11 @@ class OptionPanel(wx.Panel):
 		self.parent = parent
 		self.master = master
 
+		# set up the initial state of the windows
+		# --------------------------------------------------------------
 		self.stimframestyle = self.master.stimframe.GetWindowStyle()
 		self.controlwindowstyle = self.parent.GetWindowStyle()
 
-		# make sure the initial state of the windows is set
 		if self.master.on_top:
 			self.master.stimframe.SetWindowStyle(self.stimframestyle|wx.STAY_ON_TOP)
 			self.parent.SetWindowStyle(self.controlwindowstyle|wx.STAY_ON_TOP)
@@ -907,6 +908,8 @@ class OptionPanel(wx.Panel):
 
 		check_statbox = wx.StaticBox(self,wx.VERTICAL,label='Display options')
 
+		# checkboxes
+		# --------------------------------------------------------------
 		attrnames = [	'show_photodiode','show_crosshairs',
 				'show_preview','fullscreen','on_top',
 				'run_loop']#,'wait_for_vsync']
@@ -924,9 +927,28 @@ class OptionPanel(wx.Panel):
 			checkboxes.append(ctrl)
 		self.checkboxes = dict(zip(attrnames,checkboxes))
 
-		check_sizer = wx.StaticBoxSizer(check_statbox,wx.VERTICAL)
+		check_sizer = wx.BoxSizer(wx.VERTICAL)
 		check_sizer.AddMany([(cc,0,wx.EXPAND|wx.ALL,5) for cc in checkboxes])
-		self.SetSizerAndFit(check_sizer)
+
+		# text box for gamma adjustment
+		# --------------------------------------------------------------
+		ref = AttributeRef(self.master,'gamma')
+		gammactrl = wx.TextCtrl(self,size=(40,-1),value=str(ref.get()),style=wx.TE_PROCESS_ENTER)
+		gammactrl.Bind(wx.EVT_TEXT_ENTER,self.onGamma)
+		gammactrl.ref = ref
+
+		gammalabel = wx.StaticText(self,-1,'Gamma correction',size=(140,-1),style=wx.ALIGN_RIGHT)
+
+		gamma_sizer = wx.BoxSizer(wx.HORIZONTAL)
+		gamma_sizer.Add(gammalabel,0,wx.EXPAND|wx.ALL,5)
+		gamma_sizer.Add(gammactrl,0,wx.EXPAND|wx.ALL,5)
+		gamma_sizer.Add((0,0),1)
+
+		sizer = wx.StaticBoxSizer(check_statbox,wx.VERTICAL)
+		sizer.Add(check_sizer,0,wx.EXPAND)
+		sizer.Add(gamma_sizer,0,wx.EXPAND)
+
+		self.SetSizerAndFit(sizer)
 
 	def onPhoto(self,event=None):
 		caller = self.checkboxes['show_photodiode']
@@ -973,6 +995,25 @@ class OptionPanel(wx.Panel):
 		caller.SetValue(caller.ref.get())
 		# kick-start the rendering loop by forcing a draw event
 		self.master.stimcanvas.onDraw()
+
+	def onGamma(self,event=None):
+		string = event.GetString()
+		caller = event.GetEventObject()
+
+		try:
+			newval = float(string)
+			caller.ref.set(newval)
+
+		except ValueError:
+			pass
+
+		caller.SetValue(str(caller.ref.get()))
+
+		# update the gamma value used by the shader
+		self.master.stimcanvas.update_gamma()
+
+		# re-draw the whole scene
+		self.master.stimcanvas.do_refresh_everything = True
 
 class ControlWindow(wx.Frame):
 	def __init__(self,parent,master,**kwargs):
