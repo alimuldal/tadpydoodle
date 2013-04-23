@@ -1,14 +1,12 @@
 import OpenGL
-
 # disable for speed?
 OpenGL.ERROR_CHECKING = False
 OpenGL.ERROR_LOGGING = False
-
 # test for bottlenecks
-OpenGL.ERROR_ON_COPY = True
+# OpenGL.ERROR_ON_COPY = True
 
 import OpenGL.GL as gl
-import OpenGL.GLU as glu
+# import OpenGL.GLU as glu
 # import OpenGL.GLUT as glut
 import OpenGL.GL.framebufferobjects as fbo
 from OpenGL.GL import shaders
@@ -17,12 +15,15 @@ from OpenGL.GL import shaders
 import wx
 from wx.glcanvas import GLCanvas,GLCanvasWithContext
 
-# import threading
 import numpy as np
 import time
 # import os
 
 import collections
+
+# # disable automatic garbage collection (!)
+# import gc
+# gc.disable()
 
 class StimCanvas(GLCanvas):
 	"""
@@ -44,10 +45,15 @@ class StimCanvas(GLCanvas):
 
 		GLCanvas.__init__(self,parent,-1,attribList=attribList)
 
+		self.SetBackgroundStyle(wx.BG_STYLE_COLOUR)
+		self.SetBackgroundColour((0,0,0,255))
+
 		self.parent = parent
 		self.master = master
 		self.listeners = []
 		self.Bind(wx.EVT_PAINT,self.onPaint)
+		self.Bind(wx.EVT_SIZE,self.onSize)
+		self.Bind(wx.EVT_ERASE_BACKGROUND,self.onEraseBackground)
 
 		self.drawcount = 0
 		self.slowestframe = -1
@@ -56,9 +62,11 @@ class StimCanvas(GLCanvas):
 
 		self.do_refresh_everything = True
 
-		# we do this in order that self.drawqueue.hasRun() == True
-		def dummy(): pass
-		self.drawqueue = wx.CallLater(0,dummy)
+		# # we do this in order that self.drawqueue.hasRun() == True
+		# def dummy(): pass
+		# self.drawqueue = wx.CallLater(0,dummy)
+
+		self.timer = parent.timer
 
 		self.done_postinit = False
 
@@ -77,6 +85,7 @@ class StimCanvas(GLCanvas):
 		self.done_predraw). We have to do this initialisation AFTER the
 		canvas has been created because it requires an OpenGL context!
 		"""
+
 		self.SetCurrent()
 		self.initFBO()
 		self.initShader()
@@ -92,6 +101,11 @@ class StimCanvas(GLCanvas):
 
 		# enable scissor testing for conditional drawing
 		gl.glEnable(gl.GL_SCISSOR_TEST)
+
+
+		if self.master.run_loop:
+			self.timer.start(self.master.min_delta_t)
+			# self.timer.start(2)
 
 		# # hinting, probably probably ignored by implementation
 		# gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
@@ -142,7 +156,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
-  		self.stimboxlist = stimboxlist
+		self.stimboxlist = stimboxlist
 		#---------------------------------------------------------------
 
 		# display list for the crosshairs
@@ -168,7 +182,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
-  		self.crosshairlist = crosshairlist
+		self.crosshairlist = crosshairlist
 		#---------------------------------------------------------------
 
 		# display list for the photodiode trigger
@@ -184,7 +198,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
-  		self.photolist = photolist
+		self.photolist = photolist
 		#---------------------------------------------------------------
 
 		# display list for the stimulus background
@@ -200,7 +214,7 @@ class StimCanvas(GLCanvas):
 		gl.glEnd()
 
 		gl.glEndList()
-  		self.stimbglist = stimbglist
+		self.stimbglist = stimbglist
 		#---------------------------------------------------------------
 
 		xres,yres = self.master.x_resolution,self.master.y_resolution
@@ -246,17 +260,17 @@ class StimCanvas(GLCanvas):
 		self.fbolist = fbolist
 		#---------------------------------------------------------------
 
-  		pass
+		pass
 
-  	def initFBO(self):
-  		"""
-  		Initialise the framebuffer object. This should happen whenever
-  		the stimulus resolution changes, since the size of the
-  		required renderbuffer depends on the pixel size of the viewport
-  		we're rendering.
-  		"""
+	def initFBO(self):
+		"""
+		Initialise the framebuffer object. This should happen whenever
+		the stimulus resolution changes, since the size of the
+		required renderbuffer depends on the pixel size of the viewport
+		we're rendering.
+		"""
 
-  		xres,yres = self.master.x_resolution,self.master.y_resolution
+		xres,yres = self.master.x_resolution,self.master.y_resolution
 
 		# create & bind an EMPTY texture object. we will render the
 		# whole viewport to this texture
@@ -381,10 +395,10 @@ class StimCanvas(GLCanvas):
 		xres,yres = self.master.x_resolution,self.master.y_resolution
 		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
 		self.stimbounds = ( 	int(np.floor(x-(scale+1))),
-			 		int(np.floor((yres-y)-(aspect*scale+1))),
-			 		int(np.ceil(2*(scale+1))),
-			 		int(np.ceil(2*(aspect*scale+1)))
-			 		)
+					int(np.floor((yres-y)-(aspect*scale+1))),
+					int(np.ceil(2*(scale+1))),
+					int(np.ceil(2*(aspect*scale+1)))
+					)
 
 		self.stimbox_aspect = aspect
 
@@ -393,10 +407,10 @@ class StimCanvas(GLCanvas):
 		xres,yres = self.master.x_resolution,self.master.y_resolution
 		x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
 		self.photobounds = ( 	int(np.floor(x-(scale+1))),
-			 		int(np.floor((yres-y)-(scale+1))),
-			 		int(np.ceil(2*(scale+1))),
-			 		int(np.ceil(2*(scale+1)))
-			 		)
+					int(np.floor((yres-y)-(scale+1))),
+					int(np.ceil(2*(scale+1))),
+					int(np.ceil(2*(scale+1)))
+					)
 
 	def onPaint(self,event=None):
 		"""
@@ -415,15 +429,30 @@ class StimCanvas(GLCanvas):
 		self.recalc_photo_bounds()
 		self.do_refresh_everything = True
 
-		# only redraw if there is not already a pending draw request!
-		if self.drawqueue.hasRun:
-			self.onDraw()
+		# # only redraw if there is not already a pending draw request!
+		# if self.drawqueue.hasRun:
+		# 	self.onDraw()
+		# if not self.timer.pending:
+		# 	self.onDraw()
+
+		self.onDraw()
 		pass
 
-	def onDraw(self):
+	def onSize(self,event=None):
 		"""
-		This is the business end, where the actual rendering loop
-		executes
+		Do NOTHING on resize events!
+		"""
+		pass
+
+	def onEraseBackground(self,event=None):
+		"""
+		Do NOTHING on background erase events!
+		"""
+		pass
+
+	def onDraw(self,event=None):
+		"""
+		This is where actual OpenGL shit goes down
 		"""
 		self.SetCurrent()
 
@@ -603,12 +632,21 @@ class StimCanvas(GLCanvas):
 
 		if not self.drawcount % self.master.framerate_window:
 			self.drawcount = 0
-			self.master.controlwindow.statuspanel.onUpdate()
+			try:
+				self.master.controlwindow.statuspanel.onUpdate()
+			except AttributeError:
+				pass
 
-		# if we're running the display loop, queue another draw call
-		if self.master.run_loop:
-			self.drawcount += 1
-			self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
+		self.drawcount += 1
+
+		if self.timer.pending:
+			self.timer.pending = False
+
+		# # if we're running the display loop, queue another draw call
+		# if self.master.run_loop:
+		# 	self.drawcount += 1
+		# 	# self.drawqueue = wx.CallLater(self.master.min_delta_t,self.onDraw)
+		# 	# self.timer.start(150)
 
 class PreviewCanvas(GLCanvas):
 	"""
@@ -649,6 +687,8 @@ class PreviewCanvas(GLCanvas):
 		self.master = stimcanvas.master
 
 		wx.EVT_PAINT(self,self.onPaint)
+		wx.EVT_SIZE(self,self.onSize)
+		wx.EVT_ERASE_BACKGROUND(self,self.onEraseBackground)
 		wx.EVT_MOTION(self, self.onMotion)
 		wx.EVT_MOUSEWHEEL(self, self.onWheel)
 		self.old_mx = None
@@ -732,6 +772,18 @@ class PreviewCanvas(GLCanvas):
 		if self.stimcanvas.done_postinit:
 			self.currsize = self.GetSize()
 			self.onDraw()
+
+	def onSize(self,event=None):
+		"""
+		Do NOTHING on resize events!
+		"""
+		pass
+
+	def onEraseBackground(self,event=None):
+		"""
+		Do NOTHING on background erase events!
+		"""
+		pass
 
 	def onDraw(self):
 
@@ -842,9 +894,7 @@ def print_gl_error():
 			'GL_STACK_UNDERFLOW',
 			'GL_STACK_OVERFLOW']
 	error = gl.glGetError()
-
 	if error:
 		for state in errorcodes:
-
 			if error == eval('gl.'+state):
 				print state

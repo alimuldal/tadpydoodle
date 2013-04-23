@@ -6,14 +6,9 @@ import time
 
 import glcanvases as glc; reload(glc)
 import gui_elements as gui; reload(gui)
+import render_timer as rt; reload(rt)
 
-# class DummyTask(object):
-# 	scan_hz = 5.
-# 	finishtime = 740./5
-# 	dt = 89.13
-# 	currentframe = 445
-
-__version__ = "1.0"
+__version__ = "1.1_thread_timer"
 
 class AppThread(multiprocessing.Process):
 
@@ -24,7 +19,7 @@ class AppThread(multiprocessing.Process):
 	'photodiode':	{'show_photodiode':True,'p_xpos':300.,'p_ypos':100. ,'p_scale':20.},
 	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,'c_scale':145.},
 	'stimulus':	{'show_preview':True,'log_framerate':False,'log_nframes':10000,
-			'run_loop':True,'vblank_mode':0,'min_delta_t':1,'framerate_window':100},
+			'run_loop':True,'vblank_mode':0,'min_delta_t':2.,'framerate_window':100},
 	'playlist':	{'playlist_directory':'playlists','repeat_playlist':True,
 			'auto_start_tasks':False}
 			}
@@ -41,6 +36,7 @@ class AppThread(multiprocessing.Process):
 
 
 	def run(self):
+
 		print "Starting TadPyDoodle v%s" %__version__
 		app = wx.PySimpleApp()
 
@@ -58,7 +54,11 @@ class AppThread(multiprocessing.Process):
 		time.sleep(0.1)
 		self.stimframe = wx.Frame(None,-1,size=(self.x_resolution,self.y_resolution),title='Stimulus window')
 		self.stimframe.Bind(wx.EVT_CLOSE, self.onClose)
+
+		self.stimframe.timer = rt.ThreadTimer(self.stimframe)
 		self.stimcanvas = glc.StimCanvas(self.stimframe,self)
+		self.stimframe.Bind(rt.EVT_THREAD_TIMER,self.stimcanvas.onDraw)
+
 		self.stimframe.Show()
 
 		print "Loading tasks..."
@@ -196,6 +196,7 @@ class AppThread(multiprocessing.Process):
 
 	def onClose(self,event):
 		if self.stimframe:
+			self.stimcanvas.timer.stop()
 			self.stimframe.Destroy()
 		if self.controlwindow:
 			self.controlwindow.Destroy()

@@ -13,6 +13,9 @@ class DummyTask(object):
 	def _drawstim():
 		pass
 
+	def __reinit():
+		pass
+
 class luminance_0(DummyTask):
 	taskname = 'luminance_0'
 	_i = 0.

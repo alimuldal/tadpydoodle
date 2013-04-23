@@ -865,7 +865,7 @@ class LogPanel(wx.Panel):
 		ax1.fill_between(np.arange(nframes),min_ft,max_ft,alpha=0.1,facecolor='k',edgecolor='None')
 		ax1.plot(np.arange(nframes),frametimes,'-k',alpha=0.3,label='Frame drawtime')
 		ax1.plot(np.arange(nframes),mean_ft,'-k',alpha=0.75,label='Mean drawtime',lw=2)
-		ax1.axhline(y=self.master.min_delta_t*1E-3,ls='--',c='k',alpha=0.75,label='Minimum drawtime')
+		ax1.axhline(y=self.master.min_delta_t*1E-3,ls='--',c='k',alpha=0.75,label='Theoretical')
 
 		ax1.set_xlim(0,self.master.log_nframes)
 		ax1.set_ylim(0,0.02)
@@ -973,9 +973,13 @@ class OptionPanel(wx.Panel):
 
 	def onFullscreen(self,event=None):
 		caller = self.checkboxes['fullscreen']
-		caller.ref.set(not caller.ref.get())
-		caller.SetValue(caller.ref.get())
-		self.master.stimframe.ShowFullScreen(caller.ref.get(),style=wx.FULLSCREEN_ALL)
+		isfullscreen = caller.ref.get()
+		caller.ref.set(not isfullscreen)
+		caller.SetValue(not isfullscreen)
+		self.master.stimframe.ShowFullScreen(not isfullscreen,style=wx.FULLSCREEN_ALL)
+		# force a full re-draw
+		# self.master.stimframe.Refresh(eraseBackground=True)
+		# self.master.stimcanvas.do_refresh_everything = True
 
 	def onTop(self,event=None):
 		caller = self.checkboxes['on_top']
@@ -991,10 +995,20 @@ class OptionPanel(wx.Panel):
 
 	def onDisplayloop(self,event=None):
 		caller = self.checkboxes['run_loop']
-		caller.ref.set(not caller.ref.get())
+
+		isrunning = caller.ref.get()
+		caller.ref.set(not isrunning)
 		caller.SetValue(caller.ref.get())
+
+		# toggle the render timer
+		if not isrunning:
+			self.master.stimcanvas.timer.reinit()
+			self.master.stimcanvas.timer.start(self.master.min_delta_t)
+		else:
+			self.master.stimcanvas.timer.stop()
+
 		# kick-start the rendering loop by forcing a draw event
-		self.master.stimcanvas.onDraw()
+		# self.master.stimcanvas.onDraw()
 
 	def onGamma(self,event=None):
 		string = event.GetString()
