@@ -725,14 +725,14 @@ class AdjustPanel(wx.Panel):
 			prefix = 'p_'
 
 			# recalculate the photodiode bounding box
-			# recalc = self.master.stimcanvas.recalc_photo_bounds
+			recalc = self.master.stimcanvas.recalc_photo_bounds
 
 		elif wx.GetKeyState(wx.WXK_F2):
 			group = self.c_textctls
 			prefix = 'c_'
 
 			# recalculate the stimulus area bounding box
-			# recalc = self.master.stimcanvas.recalc_stim_bounds
+			recalc = self.master.stimcanvas.recalc_stim_bounds
 		else:
 			return
 
@@ -764,7 +764,7 @@ class AdjustPanel(wx.Panel):
 		control.SetValue(str(val))
 
 		# recalculate bounding box and force a full re-draw
-		# recalc()
+		recalc()
 		self.master.stimcanvas.do_refresh_everything = True
 
 	def onText(self,event):
