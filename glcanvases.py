@@ -1,3 +1,20 @@
+"""
+Copyright 2013 Alistair Muldal & Timothy Lillicrap
+
+Tadpydoodle is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Tadpydoodle is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import OpenGL
 # disable for speed?
 OpenGL.ERROR_CHECKING = False
@@ -8,6 +25,7 @@ OpenGL.ERROR_LOGGING = False
 import OpenGL.GL as gl
 # import OpenGL.GLU as glu
 # import OpenGL.GLUT as glut
+
 import OpenGL.GL.framebufferobjects as fbo
 from OpenGL.GL import shaders
 # import OpenGL.GLX as glx
