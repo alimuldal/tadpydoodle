@@ -834,7 +834,6 @@ class LogPanel(wx.Panel):
 		matplotlib.use('wxagg')
 		from matplotlib import pyplot as pp
 		import numpy as np
-		pl.ion()
 
 		fig1,ax1 = pp.subplots(1,1)
 		ax1.hold(True)
@@ -886,7 +885,7 @@ class LogPanel(wx.Panel):
 		ax1.set_xlim(0,self.master.log_nframes)
 		ax1.set_ylim(0,0.02)
 		ax1.set_xlabel('Frame #')
-		ax1.legend()
+		ax1.legend(fancybox=True)
 
 		fig1.tight_layout()
 
@@ -898,7 +897,6 @@ class LogPanel(wx.Panel):
 		ax2.set_ylabel('Frequency')
 
 		pp.show(block=True)
-		pl.ioff()
 
 		#--------------------------------------------------------------------------------------
 
