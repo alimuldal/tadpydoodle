@@ -94,6 +94,14 @@ class  inverted_dotflash2(dotflash2):
 	background_color = (1.,1.,1.,1.)
 	dot_color = (0.,0.,0.,1.)
 
+class inverted_dotflash1_2hz(inverted_dotflash1):
+	taskname = "inverted_dotflash1_2hz"
+	scan_hz = 2.
+
+class inverted_dotflash2_2hz(inverted_dotflash2):
+	taskname = "inverted_dotflash2_2hz"
+	scan_hz = 2.
+
 class widescreen_dotflash1(DotFlash):
 	"""
 	A coarser dotflash mapping over twice the stimulus width. The grid is
