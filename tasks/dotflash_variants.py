@@ -146,6 +146,61 @@ class widescreen_dotflash_2hz_2(widescreen_dotflash2):
 	taskname = 'widescreen_dotflash_2hz_2'
 	scan_hz = 2.
 
+class resp_map(DotFlash):
+	"""
+	Quick-and-dirty assessment of responses in different parts of the
+	stimulus area
+	"""
+
+	# this is how the stimulus will appear in td2's menu
+	taskname = 'resp_map'
+
+	# stimulus-specific parameters
+	gridshape = (4,4)
+	gridlim = (0.9,0.9)
+	dot_color = (1.,1.,1.,1.)
+	radius = 0.1
+	nvertices = 64
+
+	# stimulus timing
+	initblanktime = 2.
+	finalblanktime = 10.
+	interval = 5
+	on_duration = 1.
+
+	# photodiode triggering parameters
+	scan_hz = 2.
+	photodiodeontime = 0.075
+
+	nstim = np.prod(gridshape)
+	permutation = np.arange(np.prod(gridshape))
+
+	def _buildtimes(self):
+		super(DotFlash,self)._buildtimes()
+		self._stimon_prev = False
+		print "#"*50
+
+	def print_pos(self):
+		nx,ny = self.gridshape
+		idx = np.unravel_index(self.currentstim,(nx,ny))
+		printgrid(nx,ny,idx)
+
+	def _display(self):
+		super(DotFlash,self)._display()
+		if self.stim_on_last_frame and not self._stimon_prev:
+			self.print_pos()
+		self._stimon_prev = self.stim_on_last_frame
+
+def printgrid(nx,ny,idx):
+	gridstr = ''
+	for ii in xrange(ny):
+		gridstr = '-'*4*nx + '\n' + gridstr
+		gridstr = ''.join(
+			['| O ' if (ii,jj) == idx else  '|   ' for jj in xrange(nx)]
+			) + '|\n' + gridstr
+	gridstr = '-'*4*nx + '\n' + gridstr
+	print gridstr
+
 class position_test(widescreen_dotflash1):
 	taskname = 'position_test'
 
