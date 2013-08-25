@@ -186,7 +186,6 @@ class resp_map(DotFlash):
 	def _buildtimes(self):
 		super(DotFlash,self)._buildtimes()
 		self._stimon_prev = False
-		print "#"*50
 
 	def print_pos(self):
 		nx,ny = self.gridshape

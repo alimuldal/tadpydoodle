@@ -412,9 +412,9 @@ class Task(object):
 			dt = time.time() - self.starttime
 
 			# if we haven't displayed all of the frames yet...
-			if self.currentframe < (self.nframes -1):
+			if self.currentframe < (self.nframes - 1):
 				# ...and if it's after the start time of the next frame...
-				if dt > self.frametimes[self.currentframe+1]:
+				if dt > self.frametimes[self.currentframe + 1]:
 					# ...increment the current frame
 					self.currentframe += 1
 
@@ -432,9 +432,9 @@ class Task(object):
 			if timeafterinitblank > 0.:
 
 				# if we haven't displayed all of the stimuli yet...
-				if self.currentstim < (self.nstim -1):
+				if self.currentstim < (self.nstim - 1):
 					# ...and if it's after the start time of the next stimulus...
-					if timeafterinitblank > self.ontimes[self.currentstim+1]:
+					if timeafterinitblank > self.ontimes[self.currentstim + 1]:
 						# ...increment the current stimulus
 						self.currentstim += 1
 						self.on_flag = False
@@ -487,6 +487,7 @@ class DotFlash(Task):
 	Base class for flashing dot stimuli
 
 	Implements:
+		_make_positions
 		_buildstim
 		_drawstim
 	"""
@@ -500,8 +501,8 @@ class DotFlash(Task):
 		x_vals = np.linspace(-1,1,nx)*self.gridlim[0]*self.area_aspect
 		y_vals = np.linspace(-1,1,ny)*self.gridlim[1]
 		x, y = np.meshgrid(x_vals,y_vals)
-		self.xpos = x.flatten()[self.permutation]
-		self.ypos = y.flatten()[self.permutation]
+		self.xpos = x.ravel()[self.permutation]
+		self.ypos = y.ravel()[self.permutation]
 
 	def _buildstim(self):
 		"""
@@ -516,6 +517,43 @@ class DotFlash(Task):
 	def _drawstim(self):
 		# draw the dot in the current position
 		self._dot.draw(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
+
+class BarFlash(Task):
+	"""
+	Base class for flashing bar stimuli
+
+	Implements:
+		_buildstim
+		_drawstim
+	"""
+
+	subclass = 'bar_flash'
+
+	def _buildstim(self):
+		nx,ny = self.nx, self.ny
+
+		x_vals = np.zeros((nx+ny),dtype=np.float32)
+		y_vals = np.zeros((nx+ny),dtype=np.float32)
+		orientations = np.zeros((nx+ny),dtype=np.float32)
+
+		x_vals[:nx] = np.linspace(-1,1,nx)*self.gridlim[0]*self.area_aspect
+		orientations[nx:] = 90.
+		y_vals[nx:] = np.linspace(-1,1,ny)*self.gridlim[1]
+
+		self.xpos = x_vals[self.fullpermutation]
+		self.ypos = y_vals[self.fullpermutation]
+		self.orientation = orientations[self.fullpermutation]
+
+		self._bar = Bar(	width = self.bar_width,
+					height = self.bar_height,
+					color = self.bar_color)
+
+	def _drawstim(self):
+		# draw the bar in the current position/orientation
+		self._bar.draw(	self.xpos[self.currentstim],
+				self.ypos[self.currentstim],
+				angle=self.orientation[self.currentstim])
+
 
 class DriftingBar(Task):
 	"""
