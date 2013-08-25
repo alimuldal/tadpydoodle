@@ -58,3 +58,15 @@ class barmap_2hz(barmap):
 
 	taskname = 'barmap_2hz'
 	scan_hz = 2.
+
+class inverted_barmap(barmap):
+
+	taskname = 'inverted_barmap'
+	bar_color = (0.,0.,0.,1.)
+	background_color = (1.,1.,1.,1.)
+
+class inverted_barmap_2hz(barmap_2hz):
+
+	taskname = 'inverted_barmap_2hz'
+	bar_color = (0.,0.,0.,1.)
+	background_color = (1.,1.,1.,1.)
