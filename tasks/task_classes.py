@@ -496,6 +496,9 @@ class DotFlash(Task):
 	subclass = 'dot_flash'
 
 	def _make_positions(self):
+
+		assert len(self.permutation) == self.nstim
+		
 		# generate a random permutation of x,y coordinates
 		nx,ny = self.gridshape
 		x_vals = np.linspace(-1,1,nx)*self.gridlim[0]*self.area_aspect
@@ -529,9 +532,11 @@ class BarFlash(Task):
 
 	subclass = 'bar_flash'
 
-	def _buildstim(self):
-		nx,ny = self.nx, self.ny
+	def _make_positions(self):
 
+		assert len(self.permutation) == self.nstim
+		
+		nx,ny = self.nx, self.ny
 		x_vals = np.zeros((nx+ny),dtype=np.float32)
 		y_vals = np.zeros((nx+ny),dtype=np.float32)
 		orientations = np.zeros((nx+ny),dtype=np.float32)
@@ -540,10 +545,13 @@ class BarFlash(Task):
 		orientations[nx:] = 90.
 		y_vals[nx:] = np.linspace(-1,1,ny)*self.gridlim[1]
 
-		self.xpos = x_vals[self.fullpermutation]
-		self.ypos = y_vals[self.fullpermutation]
-		self.orientation = orientations[self.fullpermutation]
+		self.xpos = x_vals[self.permutation]
+		self.ypos = y_vals[self.permutation]
+		self.orientation = orientations[self.permutation]
 
+
+	def _buildstim(self):
+		self._make_positions()
 		self._bar = Bar(	width = self.bar_width,
 					height = self.bar_height,
 					color = self.bar_color)
@@ -569,6 +577,9 @@ class DriftingBar(Task):
 	subclass = 'drifting_bar'
 
 	def _make_orientations(self):
+		
+		assert len(self.permutation) == self.nstim
+
 		# direction for each bar sweep
 		orientation = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
 
@@ -576,6 +587,7 @@ class DriftingBar(Task):
 		self.orientation = orientation[self.permutation]
 
 	def _buildstim(self):
+
 		self._make_orientations()
 		self._bar = Bar(			width=self.bar_width,
 							height=self.bar_height,
@@ -616,6 +628,9 @@ class OccludedDriftingBar(DriftingBar):
 	subclass = 'occluded_drifting_bar'
 
 	def _make_orientations(self):
+
+		assert len(self.permutation) == self.nstim
+
 		# angle = np.repeat(self.angles,self.full_nstim//2)
 		occluder_pos = np.linspace(	-1.+(self.occluder_width/2.),
 						1.-(self.occluder_width/2.),
@@ -633,6 +648,7 @@ class OccludedDriftingBar(DriftingBar):
 		self.orientation,self.occluder_pos = zip(*states)
 
 	def _buildstim(self):
+
 		self._make_orientations()
 		self._bar = Bar(			width=self.bar_width,
 							height=self.bar_height,
@@ -672,6 +688,8 @@ class DriftingGrating(Task):
 	"""
 
 	def _make_orientations(self):
+
+		assert len(self.permutation) == self.nstim
 
 		orientation = np.linspace(0.,360.,len(self.fullpermutation),endpoint=False)
 

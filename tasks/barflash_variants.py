@@ -29,8 +29,8 @@ class barmap(BarFlash):
 	gridlim = (0.9,0.9)
 
 	# stimulus-specific parameters
-	nx = 6
-	ny = 6
+	nx = 5
+	ny = 5
 	bar_color = (1.,1.,1.,1.)
 	bar_height = 2.
 	bar_width = 0.2
@@ -45,14 +45,14 @@ class barmap(BarFlash):
 	scan_hz = 5.
 	photodiodeontime = 0.075
 
+	nstim = nx + ny
 	#-----------------------------------------------------------------------
-	# 10-long permutation when seed == 0
-	fullpermutation = np.array([2, 8, 4, 9, 1, 6, 7, 3, 0, 5])
-	# fullpermutation = np.arange(10)
-	#-----------------------------------------------------------------------
+	# gen = np.random.RandomState(0)
+	# permutation = gen.permutation(nstim)
 
-	nstim = 10
-	permutation = fullpermutation[:nstim]
+	# equivalent 10-long permutation when seed == 0
+	permutation = np.array([2, 8, 4, 9, 1, 6, 7, 3, 0, 5])
+	#-----------------------------------------------------------------------
 
 class barmap_2hz(barmap):
 
