@@ -66,13 +66,11 @@ class Bar(object):
 		draw(self,x,y,z,angle)
 	"""
 
-	def __init__(self,width,height,color):
+	def __init__(self,width,height):
 		""" Create the display list """
 		self.barlist = gl.glGenLists(1)
 
 		gl.glNewList(self.barlist,gl.GL_COMPILE)
-
-		gl.glColor4f(*color)
 		gl.glBegin(gl.GL_QUADS)
 		gl.glVertex2f(-width/2., height/2 )
 		gl.glVertex2f( width/2., height/2 )
@@ -81,12 +79,13 @@ class Bar(object):
 		gl.glEnd()
 		gl.glEndList()
 
-	def draw(self,x=0.,y=0.,z=0.,angle=0.):
+	def draw(self,x=0.,y=0.,z=0.,angle=0.,color=(1.,1.,1.,1.)):
 		""" Locally translate/rotate and draw the bar """
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glPushMatrix()
 		gl.glTranslate(x,y,z)
 		gl.glRotate(angle,0.,0.,1.)
+		gl.glColor4f(*color)
 		gl.glCallList(self.barlist)
 		gl.glPopMatrix()
 
@@ -118,22 +117,22 @@ class Dot(object):
 	Methods:
 		draw(self,x,y,z)
 	"""
-	def __init__(self,radius,nvertices,color):
+	def __init__(self,radius,nvertices):
 		""" Create the display list """
 		self.dotlist = gl.glGenLists(1)
 		gl.glNewList(self.dotlist,gl.GL_COMPILE)
-		gl.glColor4f(*color)
 		gl.glBegin(gl.GL_POLYGON)
 		for angle in np.linspace(0.,2*np.pi,nvertices,endpoint=False):
 			gl.glVertex2f(np.sin(angle)*radius,np.cos(angle)*radius)
 		gl.glEnd()
 		gl.glEndList()
 
-	def draw(self,x=0.,y=0.,z=0.):
+	def draw(self,x=0.,y=0.,z=0.,color=(1.,1.,1.,1.)):
 		""" Locally translate and draw the dot """
 		gl.glMatrixMode(gl.GL_MODELVIEW)
 		gl.glPushMatrix()
 		gl.glTranslate(x,y,z)
+		gl.glColor4f(*color)
 		gl.glCallList(self.dotlist)
 		gl.glPopMatrix()
 
@@ -257,7 +256,7 @@ class GratingTextureQuad(object):
 	Methods:
 		draw(self,translation,rotation)
 	"""
-	def __init__(self,texdata,color=(1.,1.,1.,1.),rect=(-1.,-1.,1.,1.)):
+	def __init__(self,texdata,rect=(-1.,-1.,1.,1.)):
 
 		# build the texture
 		self.texture = gl.glGenTextures(1)
@@ -284,7 +283,6 @@ class GratingTextureQuad(object):
 
 		x0,y0,x1,y1 = rect
 
-		gl.glColor4f(*color)
 		gl.glBegin( gl.GL_QUADS )
 		gl.glTexCoord2f( 0, 1 );	gl.glVertex2f( x0, y1 )
 		gl.glTexCoord2f( 0, 0 );	gl.glVertex2f( x0, y0 )
@@ -300,7 +298,7 @@ class GratingTextureQuad(object):
 
 		self.texlist = texlist
 
-	def draw(self,offset=0.,angle=0.):
+	def draw(self,offset=0.,angle=0.,color=(1.,1.,1.,1.)):
 		"""
 		Translate/rotate within texture coordinates, then draw the
 		texture
@@ -316,6 +314,7 @@ class GratingTextureQuad(object):
 		# we move in the opposite direction in texture coords
 		gl.glTranslate(-offset,0,0)
 		gl.glRotatef(-angle,0,0,1)
+		gl.glColor4f(*color)
 		gl.glCallList(self.texlist)
 
 		# we pop and go BACK to the modelview matrix for safety!!!
@@ -514,12 +513,54 @@ class DotFlash(Task):
 		self._make_positions()
 
 		# create the dot
-		self._dot = Dot(self.radius,self.nvertices,self.dot_color)
+		self._dot = Dot(self.radius,self.nvertices)
 		pass
 
 	def _drawstim(self):
 		# draw the dot in the current position
-		self._dot.draw(self.xpos[self.currentstim],self.ypos[self.currentstim],0.)
+		self._dot.draw(	self.xpos[self.currentstim],
+				self.ypos[self.currentstim],
+				0.,
+				self.dot_color
+				)
+
+class WeberDotFlash(DotFlash):
+	"""
+	Flashing dots with pseudorandom positions and luminance values.
+	Luminance values are distributed on a log scale.
+	"""
+
+	subclass = 'weber_dot_flash'
+
+	def _make_positions(self):
+
+		assert len(self.permutation) == self.nstim
+
+		# generate a random permutation of x,y coordinates and
+		# luminances
+		nx,ny = self.gridshape		
+		x_vals = np.linspace(-1,1,nx)*self.gridlim[0]*self.area_aspect
+		y_vals = np.linspace(-1,1,ny)*self.gridlim[1]
+
+		nl = self.n_luminances
+		lmin,lmax = self.luminance_range
+		l_vals = np.linspace(lmin,lmax,nl)**self.gamma
+
+		x, y, l = np.meshgrid(x_vals, y_vals, l_vals)
+		self.xpos = x.ravel()[self.permutation]
+		self.ypos = y.ravel()[self.permutation]
+		l = l.ravel()[self.permutation]
+
+		self.dot_color = l[:,np.newaxis]*np.ones(4)
+		self.dot_color[:,3] = 1.
+
+	def _drawstim(self):
+		# draw the dot in the current position
+		self._dot.draw(	self.xpos[self.currentstim],
+				self.ypos[self.currentstim],
+				0.,
+				self.dot_color[self.currentstim]
+				)
 
 class BarFlash(Task):
 	"""
@@ -552,15 +593,16 @@ class BarFlash(Task):
 
 	def _buildstim(self):
 		self._make_positions()
-		self._bar = Bar(	width = self.bar_width,
-					height = self.bar_height,
-					color = self.bar_color)
+		self._bar = Bar(	width=self.bar_width,
+					height=self.bar_height
+					)
 
 	def _drawstim(self):
 		# draw the bar in the current position/orientation
 		self._bar.draw(	self.xpos[self.currentstim],
 				self.ypos[self.currentstim],
-				angle=self.orientation[self.currentstim])
+				angle=self.orientation[self.currentstim],
+				color=self.bar_color)
 
 
 class DriftingBar(Task):
@@ -590,8 +632,8 @@ class DriftingBar(Task):
 
 		self._make_orientations()
 		self._bar = Bar(			width=self.bar_width,
-							height=self.bar_height,
-							color=self.bar_color)
+							height=self.bar_height
+							)
 
 		self._aperture = CircularStencil(	radius=self.aperture_radius,
 							nvertices=self.aperture_nvertices,
@@ -611,7 +653,10 @@ class DriftingBar(Task):
 		self._aperture.draw()
 
 		# draw the bar (ROTATED 90o!), disable stencil test
-		self._bar.draw(x,y,0,self.orientation[self.currentstim])
+		self._bar.draw(	x,y,0,
+				angle=self.orientation[self.currentstim],
+				color=self.bar_color
+				)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -651,8 +696,8 @@ class OccludedDriftingBar(DriftingBar):
 
 		self._make_orientations()
 		self._bar = Bar(			width=self.bar_width,
-							height=self.bar_height,
-							color=self.bar_color)
+							height=self.bar_height
+							)
 
 		self._aperture = RectangularStencil(	width=self.occluder_width*self.area_aspect,
 							height=self.occluder_height,
@@ -672,7 +717,9 @@ class OccludedDriftingBar(DriftingBar):
 		self._aperture.draw(x=self.occluder_pos[self.currentstim])
 
 		# draw the bar (ROTATED 90o!), disable stencil test
-		self._bar.draw(x,y,0,self.orientation[self.currentstim])
+		self._bar.draw(	x,y,0,
+				angle=self.orientation[self.currentstim],
+				color=self.bar_color)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
@@ -703,7 +750,6 @@ class DriftingGrating(Task):
 		self._make_orientations()
 		self._make_grating()
 		self._texture = GratingTextureQuad(	texdata=self._texdata,
-							color=self.grating_color,
 							rect=(-1,-1,1,1))
 
 		self._aperture = CircularStencil(	radius=self.aperture_radius,
@@ -726,7 +772,9 @@ class DriftingGrating(Task):
 		# draw the texture, disable stencil test
 		self._texture.draw(	offset=self._phase,
 					# correction for unit circle
-					angle=self.orientation[self.currentstim])
+					angle=self.orientation[self.currentstim],
+					color=self.grating_color
+					)
 		gl.glDisable(gl.GL_STENCIL_TEST)
 
 		pass
