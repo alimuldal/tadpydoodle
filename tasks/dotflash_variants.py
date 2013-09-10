@@ -102,6 +102,39 @@ class inverted_dotflash2_2hz(inverted_dotflash2):
 	taskname = "inverted_dotflash2_2hz"
 	scan_hz = 2.
 
+class inverted_dotflash1_2hz_005(inverted_dotflash1_2hz):
+	taskname = 'inverted_dotflash1_2hz_005'
+	background_color = (0.05,0.05,0.05,1.0)
+
+class inverted_dotflash2_2hz_005(inverted_dotflash2_2hz):
+	taskname = 'inverted_dotflash2_2hz_005'
+	background_color = (0.05,0.05,0.05,1.0)
+
+class inverted_dotflash1_2hz_02(inverted_dotflash1_2hz):
+	taskname = 'inverted_dotflash1_2hz_02'
+	background_color = (0.2,0.2,0.2,1.0)
+
+class inverted_dotflash2_2hz_02(inverted_dotflash2_2hz):
+	taskname = 'inverted_dotflash2_2hz_02'
+	background_color = (0.2,0.2,0.2,1.0)
+
+class inverted_dotflash1_2hz_04(inverted_dotflash1_2hz):
+	taskname = 'inverted_dotflash1_2hz_04'
+	background_color = (0.4,0.4,0.4,1.0)
+
+class inverted_dotflash2_2hz_04(inverted_dotflash2_2hz):
+	taskname = 'inverted_dotflash2_2hz_04'
+	background_color = (0.4,0.4,0.4,1.0)
+
+class inverted_dotflash1_2hz_07(inverted_dotflash1_2hz):
+	taskname = 'inverted_dotflash1_2hz_07'
+	background_color = (0.7,0.7,0.7,1.0)
+
+class inverted_dotflash2_2hz_07(inverted_dotflash2_2hz):
+	taskname = 'inverted_dotflash2_2hz_07'
+	background_color = (0.7,0.7,0.7,1.0)
+
+
 class widescreen_dotflash1(DotFlash):
 	"""
 	A coarser dotflash mapping over twice the stimulus width. The grid is
