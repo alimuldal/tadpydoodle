@@ -28,7 +28,19 @@ import OpenGL.GL as gl
 
 import OpenGL.GL.framebufferobjects as fbo
 from OpenGL.GL import shaders
-# import OpenGL.GLX as glx
+
+from OpenGL import GLX as glx
+# from OpenGL.extensions import alternate
+# glXSwapInterval = alternate('glXSwapInterval', glx.glXSwapIntervalSGI,
+# 	glx.glXSwapIntervalMESA, lambda x: None)
+if glx.glXSwapIntervalSGI:
+	glXSwapInterval = glx.glXSwapIntervalSGI
+elif glx.glXSwapIntervalMESA:
+	glXSwapInterval = glx.glXSwapIntervalMESA
+else:
+	import warnings
+	warnings.warn('glXSwapInterval is not implemented')
+	glXSwapInterval = lambda x: None
 
 import wx
 from wx.glcanvas import GLCanvas,GLCanvasWithContext
@@ -272,6 +284,9 @@ class StimCanvas(GLCanvas):
 
 		# disable the shader!
 		shaders.glUseProgram(0)
+
+		# wait for next vblank before swapping buffers
+		glXSwapInterval(1)
 
 		gl.glEndList()
 
@@ -584,6 +599,7 @@ class StimCanvas(GLCanvas):
 		# did anything change during this loop iteration?
 		if (self.stimbox_changed or self.photodiode_changed or self.everything_changed):
 
+
 			# since we're rendering offscreen we now need to copy
 			# the contents of the FBO to the back buffer so that
 			# they will be made visible when we call SwapBuffers()
@@ -617,11 +633,11 @@ class StimCanvas(GLCanvas):
 			self.stimbox_changed = False
 			self.photodiode_changed = False
 
-			# print_gl_error()
-
 			if self.master.show_preview:
 				# draw every 'new' frame to the preview canvas
 				[listener.onDraw() for listener in self.listeners]
+				
+			# print_gl_error()
 
 		else:
 			# nothing has changed during this rendering loop, so we
@@ -776,6 +792,9 @@ class PreviewCanvas(GLCanvas):
 
 		# re-enable scissor test
 		gl.glEnable(gl.GL_SCISSOR_TEST)
+
+		# don't wait for next vblank before swapping buffers
+		glXSwapInterval(0)
 
 		gl.glEndList()
 		# --------------------------------------------------------------
