@@ -62,10 +62,9 @@ class AppThread(multiprocessing.Process):
 
 		# setting this environment variable forces vsync on/off (on my
 		# Acer laptop, Intel Sandy Bridge built-in grapics...)
-		print self.vblank_mode == 'auto'
 		if self.vblank_mode != -1:
 			os.environ.update({'vblank_mode':str(self.vblank_mode)})
-		print 'vblank_mode: %s' % os.environ.get('vblank_mode','undefined')
+		# print 'vblank_mode: %s' % os.environ.get('vblank_mode','undefined')
 
 		print "Initialising stimulus window..."
 		# we need to pause here, or for some reason the thread stalls

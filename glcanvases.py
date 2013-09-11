@@ -101,11 +101,16 @@ class StimCanvas(GLCanvas):
 		self.done_postinit = False
 
 		# ring buffers
-		self.max_frame_time_buffer = collections.deque(maxlen=self.master.framerate_window)
-		self.frametimes = collections.deque(maxlen=self.master.log_nframes)
-		self.alldraws = collections.deque(maxlen=self.master.log_nframes)
-		self.stimdraws = collections.deque(maxlen=self.master.log_nframes)
-		self.photodraws = collections.deque(maxlen=self.master.log_nframes)
+		self.max_frame_time_buffer = collections.deque(
+			maxlen=self.master.framerate_window)
+		self.frametimes = collections.deque(
+			maxlen=self.master.log_nframes)
+		self.alldraws = collections.deque(
+			maxlen=self.master.log_nframes)
+		self.stimdraws = collections.deque(
+			maxlen=self.master.log_nframes)
+		self.photodraws = collections.deque(
+			maxlen=self.master.log_nframes)
 
 		pass
 
@@ -311,23 +316,28 @@ class StimCanvas(GLCanvas):
 		gl.glBindTexture(gl.GL_TEXTURE_2D,self.fbo_texture)
 
 		# texture params
-		gl.glTexEnvf( gl.GL_TEXTURE_ENV, gl.GL_TEXTURE_ENV_MODE, gl.GL_MODULATE )
-		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP )
-		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP )
-		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR )
-		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR )
+		gl.glTexEnvf( gl.GL_TEXTURE_ENV, gl.GL_TEXTURE_ENV_MODE, 
+			gl.GL_MODULATE )
+		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, 
+			gl.GL_CLAMP )
+		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, 
+			gl.GL_CLAMP )
+		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, 
+			gl.GL_LINEAR )
+		gl.glTexParameterf( gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, 
+			gl.GL_LINEAR )
 
 		# map the texture
 		gl.glTexImage2D(
 			gl.GL_TEXTURE_2D,		# target
 			0,				# mipmap level
-			gl.GL_RGB,			# internal format (use any RGB format)
+			gl.GL_RGB,			# internal format
 			xres,				# width
 			yres,				# height
 			0,				# border
 			gl.GL_RGB,			# input data format
 			gl.GL_UNSIGNED_BYTE,		# input data type
-			None				# input data (none until we render to the framebuffer)
+			None				# input data 
 			)
 
 		# create & bind a framebuffer object
@@ -339,7 +349,7 @@ class StimCanvas(GLCanvas):
 		fbo.glBindRenderbufferEXT(fbo.GL_RENDERBUFFER,self.depthbuffer)
 		fbo.glRenderbufferStorageEXT(
 			fbo.GL_RENDERBUFFER,		# target
-			gl.GL_DEPTH24_STENCIL8,		# internal format (ATI support for combined depth/stencil?)
+			gl.GL_DEPTH24_STENCIL8,		# internal format
 			xres,				# width
 			yres				# height
 			)
@@ -353,10 +363,11 @@ class StimCanvas(GLCanvas):
 			0				# mipmap level
 			)
 
-		# attach the renderbuffer to the depth component of the framebuffer
+		# attach the renderbuffer to the depth component of the
+		# framebuffer
 		fbo.glFramebufferRenderbuffer(
 			fbo.GL_FRAMEBUFFER,		# target
-			fbo.GL_DEPTH_STENCIL_ATTACHMENT,# attachment (ATI support for combined depth/stencil?)
+			fbo.GL_DEPTH_STENCIL_ATTACHMENT,# attachment
 			fbo.GL_RENDERBUFFER,		# renderbuffer target
 			self.depthbuffer 		# renderbuffer ID
 			)
@@ -371,6 +382,9 @@ class StimCanvas(GLCanvas):
 		pass
 
 	def initShader(self):
+		"""
+		initialise the shaders used for providing gamma correction
+		"""
 
 		vshader_str = """
 		#version 130
@@ -381,7 +395,8 @@ class StimCanvas(GLCanvas):
 		}
 		"""
 
-		VERTEX_SHADER = shaders.compileShader(vshader_str, gl.GL_VERTEX_SHADER)
+		VERTEX_SHADER = shaders.compileShader(vshader_str, 
+			gl.GL_VERTEX_SHADER)
 
 		fshader_str = """
 		#version 130
@@ -396,29 +411,34 @@ class StimCanvas(GLCanvas):
 		}
 		"""
 
-		FRAGMENT_SHADER = shaders.compileShader(fshader_str, gl.GL_FRAGMENT_SHADER)
+		FRAGMENT_SHADER = shaders.compileShader(fshader_str, 
+			gl.GL_FRAGMENT_SHADER)
 
-		self.gamma_shader = shaders.compileProgram(VERTEX_SHADER,FRAGMENT_SHADER)
+		self.gamma_shader = shaders.compileProgram(VERTEX_SHADER,
+			FRAGMENT_SHADER)
 
 		# in order to pass uniform values to the shader we need to know
 		# where these values are stored within the program object. we
 		# store this info in a dict for easy access later on.
 		self.uniform_locations = {
-			'gamma': shaders.glGetUniformLocation( self.gamma_shader, 'gamma' ),
+			'gamma': shaders.glGetUniformLocation( 
+				self.gamma_shader, 'gamma' ),
 		}
 
 		pass
 
 	def update_gamma(self):
-
-		# update the uniform float gamma value used by the pixel shader
+		"""
+		update the gamma value used by the pixel shader
+		"""
 		gl.glUseProgram(self.gamma_shader)
-		shaders.glUniform1f( self.uniform_locations['gamma'],self.master.gamma)
+		shaders.glUniform1f( self.uniform_locations['gamma'],
+			self.master.gamma)
 		gl.glUseProgram(0)
 
 	def recalc_stim_bounds(self):
 		"""
-		recalculate the bounding boxes for the stimulus area
+		recalculate the bounding box for the stimulus area
 		"""
 
 		try:
@@ -426,9 +446,10 @@ class StimCanvas(GLCanvas):
 		except (AttributeError):
 			aspect = 1.
 		xres,yres = self.master.x_resolution,self.master.y_resolution
-		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
-		self.stimbounds = ( 	int(np.floor(x-(scale+1))),
-					int(np.floor((yres-y)-(aspect*scale+1))),
+		x,y,scale = (self.master.c_ypos, self.master.c_xpos, 
+			self.master.c_scale)
+		self.stimbounds = ( 	int(x-(scale+1)),
+					int((yres-y)-(aspect*scale+1)),
 					int(np.ceil(2*(scale+1))),
 					int(np.ceil(2*(aspect*scale+1)))
 					)
@@ -436,11 +457,15 @@ class StimCanvas(GLCanvas):
 		self.stimbox_aspect = aspect
 
 	def recalc_photo_bounds(self):
+		"""
+		recalculate the bounding box for the photodiode trigger
+		"""
 
 		xres,yres = self.master.x_resolution,self.master.y_resolution
-		x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
-		self.photobounds = ( 	int(np.floor(x-(scale+1))),
-					int(np.floor((yres-y)-(scale+1))),
+		x,y,scale = (self.master.p_ypos, self.master.p_xpos, 
+			self.master.p_scale)
+		self.photobounds = ( 	int(x-(scale+1)),
+					int((yres-y)-(scale+1)),
 					int(np.ceil(2*(scale+1))),
 					int(np.ceil(2*(scale+1)))
 					)
@@ -504,7 +529,8 @@ class StimCanvas(GLCanvas):
 			gl.glScissor( 0,0,xres,yres )
 
 			gl.glClearColor(0., 0., 0., 0.)
-			gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
+			gl.glClear(gl.GL_COLOR_BUFFER_BIT|\
+				gl.GL_DEPTH_BUFFER_BIT|gl.GL_STENCIL_BUFFER_BIT)
 
 			# we'll need to re-draw these after we've wiped the
 			# whole scene
@@ -521,7 +547,8 @@ class StimCanvas(GLCanvas):
 		# to figure out depth testing
 		#---------------------------------------------------------------
 
-		x,y,scale = self.master.c_ypos, self.master.c_xpos, self.master.c_scale
+		x,y,scale = (self.master.c_ypos, self.master.c_xpos, 
+			self.master.c_scale)
 
 		if self.do_refresh_stimbox:
 			# draw the stimulus background. we do this even if the
@@ -569,7 +596,8 @@ class StimCanvas(GLCanvas):
 		# draw the photodiode
 		if self.do_refresh_photodiode:
 
-			x,y,scale = self.master.p_ypos, self.master.p_xpos, self.master.p_scale
+			x,y,scale = (self.master.p_ypos, self.master.p_xpos, 
+				self.master.p_scale)
 
 			gl.glPushMatrix()
 			gl.glTranslate(x, yres-y, 0)
@@ -597,8 +625,8 @@ class StimCanvas(GLCanvas):
 			self.photodraws.append(int(self.photodiode_changed))
 
 		# did anything change during this loop iteration?
-		if (self.stimbox_changed or self.photodiode_changed or self.everything_changed):
-
+		if (self.stimbox_changed or self.photodiode_changed 
+			or self.everything_changed):
 
 			# since we're rendering offscreen we now need to copy
 			# the contents of the FBO to the back buffer so that
@@ -625,17 +653,18 @@ class StimCanvas(GLCanvas):
 			# software gamma correction using a pixel shader
 			gl.glCallList(self.fbolist)
 
-			# swap the front and back buffers so that the changes
-			# are made visible
-			self.SwapBuffers()
-
 			self.everything_changed = False
 			self.stimbox_changed = False
 			self.photodiode_changed = False
 
+			# swap the front and back buffers so that the changes
+			# are made visible
+			self.SwapBuffers()
+
 			if self.master.show_preview:
 				# draw every 'new' frame to the preview canvas
-				[listener.onDraw() for listener in self.listeners]
+				for listener in self.listeners:
+					listener.onDraw()
 				
 			# print_gl_error()
 
@@ -648,7 +677,8 @@ class StimCanvas(GLCanvas):
 		# # draw only every nth frame to the preview canvas to reduce
 		# # overhead
 		# if not self.drawcount % self.master.preview_frequency:
-		# 	[listener.onDraw() for listener in self.listeners]
+		# 	for listener in self.listeners:
+		# 		listener.onDraw()
 
 		# keep a running minimum of the framerate and update the task
 		# status panel
@@ -709,7 +739,8 @@ class PreviewCanvas(GLCanvas):
 		self.context = stimcanvas.GetContext()
 
 		# this is a funny class constructor, not a class itself...
-		canvas = GLCanvasWithContext(parent,shared=self.context,size=size,attribList=attribList)
+		canvas = GLCanvasWithContext(parent,shared=self.context,
+			size=size,attribList=attribList)
 		# ...so we do this magic so that canvas is properly instantiated
 		self.PostCreate(canvas)
 
@@ -843,7 +874,9 @@ class PreviewCanvas(GLCanvas):
 		# print_gl_error()
 
 	def onMotion(self,event):
-		""" called when mouse moves within the figure """
+		"""
+		called when mouse moves within the figure
+		"""
 
 		if wx.GetKeyState(wx.WXK_F1):
 			mode = 1
@@ -890,6 +923,9 @@ class PreviewCanvas(GLCanvas):
 		self.stimcanvas.do_refresh_everything = True
 
 	def onWheel(self,event):
+		"""
+		called when the mouse scroll wheel is used
+		"""
 
 		if wx.GetKeyState(wx.WXK_F1):
 			control = self.master.controlwindow.adjustpanel.p_textctls['p_scale']
