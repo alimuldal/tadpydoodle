@@ -32,13 +32,17 @@ class AppThread(multiprocessing.Process):
 	# default configuration
 	template = {
 	# [section]	variable = value
-	'window':	{'x_resolution':800,'y_resolution':600,'fullscreen':False,'on_top':True,'gamma':1.7},
-	'photodiode':	{'show_photodiode':True,'p_xpos':300.,'p_ypos':100. ,'p_scale':20.},
-	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,'c_scale':145.},
-	'stimulus':	{'show_preview':True,'log_framerate':False,'log_nframes':10000,
-			'run_loop':True,'vblank_mode':-1,'min_delta_t':2.,'framerate_window':100},
-	'playlist':	{'playlist_directory':'playlists','repeat_playlist':True,
-			'auto_start_tasks':False}
+	'window':	{'x_resolution':800,'y_resolution':600,
+			'fullscreen':False,'on_top':True,'gamma':1.7},
+	'photodiode':	{'show_photodiode':True,'p_xpos':300.,'p_ypos':100. ,
+			'p_scale':20.},
+	'crosshairs':	{'show_crosshairs':True,'c_xpos':300.,'c_ypos':600.,
+			'c_scale':145.},
+	'stimulus':	{'show_preview':True,'log_framerate':False,
+			'log_nframes':10000,'run_loop':True,'vblank_mode':-1,
+			'min_delta_t':2.,'framerate_window':100},
+	'playlist':	{'playlist_directory':'playlists',
+			'repeat_playlist':True,'auto_start_tasks':False}
 			}
 
 	# configuration file
@@ -46,11 +50,11 @@ class AppThread(multiprocessing.Process):
 	configfile = 'tadpydoodlerc'
 
 	# tasks
-	taskdir = './tasks'
+	base_taskdir = './base_tasks'
+	user_taskdir = './user_tasks'
 	run_task = False
 	current_task = None
 	taskdict = None
-
 
 	def run(self):
 
@@ -71,7 +75,9 @@ class AppThread(multiprocessing.Process):
 		# when creating the stimulus frame (but only on the
 		# workstation?!)
 		time.sleep(0.1)
-		self.stimframe = wx.Frame(None,-1,size=(self.x_resolution,self.y_resolution),title='Stimulus window')
+		self.stimframe = wx.Frame(None,-1,
+			size=(self.x_resolution,self.y_resolution),
+			title='Stimulus window')
 		self.stimframe.Bind(wx.EVT_CLOSE, self.onClose)
 
 		self.stimframe.timer = rt.ThreadTimer(self.stimframe)
@@ -84,7 +90,8 @@ class AppThread(multiprocessing.Process):
 		self.loadTasks()
 
 		print "Initialising controls ..."
-		self.controlwindow = gui.ControlWindow(None,self,title='TadPyDoodle')
+		self.controlwindow = gui.ControlWindow(None, self,
+			title='TadPyDoodle')
 		self.controlwindow.Bind(wx.EVT_CLOSE, self.onClose)
 		self.controlwindow.Show()
 		self.controlwindow.SetFocus()
@@ -184,32 +191,43 @@ class AppThread(multiprocessing.Process):
 		recognised. Duplicate tasknames are skipped with a warning.
 		"""
 
+		base_taskdir, user_taskdir = (pth.replace('~',os.getenv('HOME')) 
+				for pth in (self.base_taskdir, self.user_taskdir))
+
+		for pth in (base_taskdir, user_taskdir):
+			if not os.path.exists(pth):
+				os.makedirs(pth)
+
 		def istask(obj):
 			return hasattr(obj,'taskname')
 
 		names = []
 		objects = []
-		for relpath,_,fullnames in os.walk(self.taskdir):
-			for fullname in fullnames:
-				fname,ext = os.path.splitext(fullname)
-				if ext.lower() == '.py':
-					# print os.path.join(relpath,fullname)
-					mod = imp.load_source(fname,os.path.join(relpath,fullname))
-				# # we don't want to do this if we've made changes to the source files
-				# elif ext.lower() == '.pyc':
-				# 	mod = imp.load_compiled(fname,os.path.join(relpath,fullname))
-				else:
-					continue
-
-				for name,obj in inspect.getmembers(mod,predicate=istask):
-
-					if obj.taskname in names:
-						print 'Ignoring duplicate of task "%s" in %s' %(obj.taskname,fullname)
+		for pth in (base_taskdir,user_taskdir):
+			for relpath,_,fullnames in os.walk(pth):
+				for fullname in fullnames:
+					fname,ext = os.path.splitext(fullname)
+					if ext.lower() == '.py':
+						# print os.path.join(relpath,fullname)
+						mod = imp.load_source(fname,
+							os.path.join(relpath,fullname))
+					# # we don't want to do this if we've made changes to the source files
+					# elif ext.lower() == '.pyc':
+					# 	mod = imp.load_compiled(fname,os.path.join(relpath,fullname))
 					else:
-						names.append(obj.taskname)
-						objects.append(obj)
-				del mod
-				
+						continue
+
+					for name,obj in inspect.getmembers(mod, 
+						predicate=istask):
+
+						if obj.taskname in names:
+							print 'Ignoring duplicate of task "%s" in %s' \
+								%(obj.taskname,fullname)
+						else:
+							names.append(obj.taskname)
+							objects.append(obj)
+					del mod
+					
 		self.current_task = None
 		self.taskdict = dict(zip(names,objects))
 
