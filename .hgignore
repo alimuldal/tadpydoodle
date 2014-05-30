@@ -16,6 +16,7 @@ boy
 tmp/*
 *.orig
 *.tadplay
+user_tasks/*
 
 syntax: regexp
 

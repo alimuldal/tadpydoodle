@@ -16,7 +16,7 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from tasks.task_classes import DriftingBar, OccludedDriftingBar
+from base_tasks.task_classes import DriftingBar, OccludedDriftingBar
 
 ################################################################################
 # drifting bar-derived stimulus classes
@@ -55,7 +55,6 @@ class bars1(DriftingBar):
 	permutation = fullpermutation[:nstim]
 
 class bars2(bars1):
-
 	taskname = 'bars2'
 	permutation = bars1.fullpermutation[bars1.nstim:]
 
@@ -66,6 +65,16 @@ class bars_2hz_1(bars1):
 class bars_2hz_2(bars2):
 	taskname = 'bars_2hz_2'
 	scan_hz = 2.
+
+class inverted_bars_2hz_1(bars_2hz_1):
+	taskname = 'inverted_bars_2hz_1'
+	bar_color = (0.,0.,0.,1.)
+	background_color = (1.,1.,1.,1.)
+
+class inverted_bars_2hz_2(bars_2hz_2):
+	taskname = 'inverted_bars_2hz_2'
+	bar_color = (0.,0.,0.,1.)
+	background_color = (1.,1.,1.,1.)
 
 class occluded_bars2(OccludedDriftingBar):
 

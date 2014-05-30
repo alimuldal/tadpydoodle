@@ -16,7 +16,7 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from tasks.task_classes import DotFlash,WeberDotFlash
+from base_tasks.task_classes import DotFlash,WeberDotFlash
 
 ################################################################################
 # dotflash-derived stimulus classes
