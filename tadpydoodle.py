@@ -38,11 +38,11 @@ class AppThread(multiprocessing.Process):
 
     # default configuration: [section] variable = value
     template = {
-        'window':   {'x_resolution': 800, 'y_resolution': 600,
+        'window': {'x_resolution': 800, 'y_resolution': 600,
                      'fullscreen': False, 'on_top': True, 'gamma': 1.7},
-        'photodiode':   {'show_photodiode': True, 'p_xpos': 300.,
+        'photodiode': {'show_photodiode': True, 'p_xpos': 300.,
                          'p_ypos': 100., 'p_scale': 20.},
-        'crosshairs':   {'show_crosshairs': True, 'c_xpos': 300.,
+        'crosshairs': {'show_crosshairs': True, 'c_xpos': 300.,
                          'c_ypos': 600., 'c_scale': 145.},
         'stimulus': {'show_preview': True, 'log_framerate': False,
                      'log_nframes': 10000, 'run_loop': True, 'vblank_mode': -1,
