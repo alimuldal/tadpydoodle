@@ -17,6 +17,7 @@ tmp/*
 *.orig
 *.tadplay
 user_tasks/*
+*.prof
 
 syntax: regexp
 
