@@ -135,16 +135,17 @@ class example_squarewave(DriftingSquarewave, example_sinusoid):
     duty_cycle = 0.5
 
 
-class example_texture(StaticTexture):
+class example_texture(FlashingTexture):
 
     taskname = 'example_texture'
 
-    # stimulus-specific parameters
+    # _texdata needs to be float32 and flipped along the row dimension
     img = lena().astype(np.float64)
     img = (img - img.min()) / img.ptp()
-
-    # _texdata needs to be float32 and flipped along the row dimension
     _texdata = np.flipud(img)
+
+    # stimulus-specific parameters
+    texture_color = (0., 1., 1., 1.)
 
     # stimulus timing
     initblanktime = 2.

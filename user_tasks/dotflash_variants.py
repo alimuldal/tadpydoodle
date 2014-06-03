@@ -372,7 +372,7 @@ class interlaced_8x8_1(dotflash1):
     on_duration = 1.
 
     # photodiode triggering parameters
-    scan_hz = 5.
+    scan_hz = 2.
     photodiodeontime = 0.075
 
     # 16/64 positions

@@ -312,6 +312,13 @@ class StimCanvas(GLCanvas):
         we're rendering.
         """
 
+        # we don't want to clamp floating point pixel values to [0, 1], since
+        # allowing negative pixel values allows us do fancy
+        # additive/subtractive blending in the framebuffer!
+        gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_FALSE);
+        gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_FALSE);
+        gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_FALSE);
+
         xres, yres = self.master.x_resolution, self.master.y_resolution
 
         # create & bind an EMPTY texture object. we will render the
@@ -334,14 +341,14 @@ class StimCanvas(GLCanvas):
         # map the texture
         gl.glTexImage2D(
             gl.GL_TEXTURE_2D,       # target
-            0,              # mipmap level
-            gl.GL_RGB,          # internal format
-            xres,               # width
-            yres,               # height
-            0,              # border
-            gl.GL_RGB,          # input data format
-            gl.GL_UNSIGNED_BYTE,        # input data type
-            None                # input data
+            0,                      # mipmap level
+            gl.GL_RGB_SNORM,        # internal format (signed!)
+            xres,                   # width
+            yres,                   # height
+            0,                      # border
+            gl.GL_RGB,              # input data format
+            gl.GL_UNSIGNED_BYTE,    # input data type
+            None                    # input data
         )
 
         # create & bind a framebuffer object
@@ -354,31 +361,32 @@ class StimCanvas(GLCanvas):
         fbo.glRenderbufferStorageEXT(
             fbo.GL_RENDERBUFFER,        # target
             gl.GL_DEPTH24_STENCIL8,     # internal format
-            xres,               # width
-            yres                # height
+            xres,                       # width
+            yres                        # height
         )
 
         # attach the texture to the color component of the framebuffer
         fbo.glFramebufferTexture2D(
-            fbo.GL_FRAMEBUFFER,     # target
-            fbo.GL_COLOR_ATTACHMENT0,  # attachment
-            gl.GL_TEXTURE_2D,       # texure target
-            self.fbo_texture,       # texture ID
-            0               # mipmap level
+            fbo.GL_FRAMEBUFFER,         # target
+            fbo.GL_COLOR_ATTACHMENT0,   # attachment
+            gl.GL_TEXTURE_2D,           # texure target
+            self.fbo_texture,           # texture ID
+            0                           # mipmap level
         )
 
         # attach the renderbuffer to the depth component of the
         # framebuffer
         fbo.glFramebufferRenderbuffer(
-            fbo.GL_FRAMEBUFFER,     # target
-            fbo.GL_DEPTH_STENCIL_ATTACHMENT,  # attachment
-            fbo.GL_RENDERBUFFER,        # renderbuffer target
-            self.depthbuffer        # renderbuffer ID
+            fbo.GL_FRAMEBUFFER,                 # target
+            fbo.GL_DEPTH_STENCIL_ATTACHMENT,    # attachment
+            fbo.GL_RENDERBUFFER,                # renderbuffer target
+            self.depthbuffer                    # renderbuffer ID
         )
 
         # make sure the FBO is set up correctly
         status = fbo.glCheckFramebufferStatusEXT(fbo.GL_FRAMEBUFFER)
         assert status == fbo.GL_FRAMEBUFFER_COMPLETE_EXT
+        # print_gl_error()
 
         # switch back to the display manager-provided framebuffer
         fbo.glBindFramebuffer(fbo.GL_FRAMEBUFFER, 0)

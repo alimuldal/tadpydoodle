@@ -41,8 +41,8 @@ Conventions for stimulus orientation
     handled within the _drawstim() method of the stimulus and *nowhere
     else*.
 
-2) It is important to bear in mind that what the animal *actually* sees is a 
-   mirror image of what the projector displays (i.e. flipped in x), because the 
+2) It is important to bear in mind that what the animal *actually* sees is a
+   mirror image of what the projector displays (i.e. flipped in x), because the
    animal sees the 'back' surface of the translucent screen.
 
       - This should be corrected for at the point of analysis, *not* in the
@@ -254,7 +254,6 @@ class RectangularStencil(object):
         gl.glCallList(self.stencillist)
         gl.glPopMatrix()
 
-
 class TextureQuad2D(object):
 
     """
@@ -269,10 +268,16 @@ class TextureQuad2D(object):
         draw(self,translation,rotation)
     """
 
-    def __init__(self, texdata, rect=(-1., -1., 1., 1.)):
+    def __init__(self, texdata, rect=(-1., -1., 1., 1.), smooth=True):
+
+        if smooth:
+            filt = gl.GL_LINEAR
+        else:
+            filt = gl.GL_NEAREST
 
         # build the texture
         self.texture = gl.glGenTextures(1)
+
         gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture)
         gl.glTexEnvf(gl.GL_TEXTURE_ENV,
                      gl.GL_TEXTURE_ENV_MODE, gl.GL_MODULATE)
@@ -281,9 +286,9 @@ class TextureQuad2D(object):
         gl.glTexParameterf(gl.GL_TEXTURE_2D,
                            gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
         gl.glTexParameterf(gl.GL_TEXTURE_2D,
-                           gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+                           gl.GL_TEXTURE_MAG_FILTER, filt)
         gl.glTexParameterf(gl.GL_TEXTURE_2D,
-                           gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+                           gl.GL_TEXTURE_MIN_FILTER, filt)
 
         w, h = texdata.shape
 
@@ -297,6 +302,8 @@ class TextureQuad2D(object):
         texlist = gl.glGenLists(1)
         gl.glNewList(texlist, gl.GL_COMPILE)
 
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         gl.glEnable(gl.GL_TEXTURE_2D)
 
         x0, y0, x1, y1 = rect
@@ -313,11 +320,15 @@ class TextureQuad2D(object):
         gl.glEnd()
 
         gl.glDisable(gl.GL_TEXTURE_2D)
+        gl.glDisable(gl.GL_BLEND)
 
         gl.glEndList()
         # --------------------------------------------------------------
 
         self.texlist = texlist
+
+        pass
+
 
     def draw(self, offset=0., angle=0., color=(1., 1., 1., 1.)):
         """
@@ -336,12 +347,12 @@ class TextureQuad2D(object):
         gl.glTranslate(-offset, 0, 0)
         gl.glRotatef(-angle, 0, 0, 1)
         gl.glColor4f(*color)
+
         gl.glCallList(self.texlist)
 
         # we pop and go BACK to the modelview matrix for safety!!!
         gl.glPopMatrix()
         gl.glMatrixMode(gl.GL_MODELVIEW)
-
 
 class TextureQuad1D(object):
 
@@ -358,7 +369,12 @@ class TextureQuad1D(object):
         draw(self,translation,rotation)
     """
 
-    def __init__(self, texdata, rect=(-1., -1., 1., 1.)):
+    def __init__(self, texdata, rect=(-1., -1., 1., 1.), smooth=True):
+
+        if smooth:
+            filt = gl.GL_LINEAR
+        else:
+            filt = gl.GL_NEAREST
 
         # build the texture
         self.texture = gl.glGenTextures(1)
@@ -370,9 +386,9 @@ class TextureQuad1D(object):
         gl.glTexParameterf(gl.GL_TEXTURE_1D,
                            gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
         gl.glTexParameterf(gl.GL_TEXTURE_1D,
-                           gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+                           gl.GL_TEXTURE_MAG_FILTER, filt)
         gl.glTexParameterf(gl.GL_TEXTURE_1D,
-                           gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+                           gl.GL_TEXTURE_MIN_FILTER, filt)
 
         gl.glTexImage1D(gl.GL_TEXTURE_1D, 0, gl.GL_LUMINANCE16, len(texdata),
                         0, gl.GL_LUMINANCE, gl.GL_FLOAT, texdata)
@@ -385,7 +401,7 @@ class TextureQuad1D(object):
         # we use blending so that the opacity of the grating varies
         # sinusoidally
         gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_DST_ALPHA)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         gl.glEnable(gl.GL_TEXTURE_1D)
 
         x0, y0, x1, y1 = rect
@@ -962,25 +978,63 @@ class DriftingSquarewave(DriftingGrating):
         self._phase = 0
 
 
-class StaticTexture(Task):
-
+class FlashingTexture(Task):
     """
-    Very basic class for static texture stimuli
+    Very basic class for flashing texture stimuli
 
     Implements:
+        _make_texdata
         _buildstim
         _drawstim
     """
 
-    subclass = 'static_texture'
+    subclass = 'flashing_texture'
+
+    def _make_texdata(self):
+        pass
 
     def _buildstim(self):
+        self._make_texdata()
         self._texture = TextureQuad2D(texdata=self._texdata,
                                       rect=(-1, -1, 1, 1))
 
     def _drawstim(self):
         # draw the texture
-        self._texture.draw()
+        self._texture.draw(color=self.texture_color)
 
 def rectwave(t, period=10, duty_cycle=0.5):
     return (t % period) <= period * duty_cycle
+
+
+class FlashingCheckerboard(FlashingTexture):
+    """
+    A flashing checkerboard with variable contrast, baseline luminance
+
+    Implements:
+        _make_texdata
+        _buildstim
+        _drawstim
+    """
+
+    subclass = 'flashing_checkerboard'
+
+    def _make_texdata(self):
+
+        self._texdata = np.zeros(self.gridshape, dtype=np.float)
+        self._texdata[::2, ::2] = 1
+        self._texdata[1::2, 1::2] = 1
+
+    def _buildstim(self):
+        self._make_texdata()
+        self._texture = TextureQuad2D(texdata=self._texdata,
+                                      rect=(-1, -1, 1, 1), smooth=False)
+    def _drawstim(self):
+
+        # update the current polarity
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        period = (1. / self.flash_hz)
+        polarity = 2. * ((on_dt % period) > (period / 2.)) - 1
+        alpha = polarity * self.checker_amplitude[self.currentstim]
+
+        # draw the texture
+        self._texture.draw(color=(1., 1., 1., alpha))
