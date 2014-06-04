@@ -73,12 +73,19 @@ class Bar(object):
         self.barlist = gl.glGenLists(1)
 
         gl.glNewList(self.barlist, gl.GL_COMPILE)
+
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
+                               gl.GL_ONE, gl.GL_ZERO)
+
         gl.glBegin(gl.GL_QUADS)
         gl.glVertex2f(-width / 2., height / 2)
         gl.glVertex2f(width / 2., height / 2)
         gl.glVertex2f(width / 2., -height / 2)
         gl.glVertex2f(-width / 2., -height / 2)
         gl.glEnd()
+
+        gl.glDisable(gl.GL_BLEND)
         gl.glEndList()
 
     def draw(self, x=0., y=0., z=0., angle=0., color=(1., 1., 1., 1.)):
@@ -127,10 +134,17 @@ class Dot(object):
         """ Create the display list """
         self.dotlist = gl.glGenLists(1)
         gl.glNewList(self.dotlist, gl.GL_COMPILE)
+
+        gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
+                               gl.GL_ONE, gl.GL_ZERO)
+        gl.glEnable(gl.GL_BLEND)
+
         gl.glBegin(gl.GL_POLYGON)
         for angle in np.linspace(0., 2 * np.pi, nvertices, endpoint=False):
             gl.glVertex2f(np.sin(angle) * radius, np.cos(angle) * radius)
         gl.glEnd()
+
+        gl.glDisable(gl.GL_BLEND)
         gl.glEndList()
 
     def draw(self, x=0., y=0., z=0., color=(1., 1., 1., 1.)):
@@ -290,10 +304,10 @@ class TextureQuad2D(object):
         gl.glTexParameterf(gl.GL_TEXTURE_2D,
                            gl.GL_TEXTURE_MIN_FILTER, filt)
 
-        w, h = texdata.shape
+        h, w = texdata.shape
 
         gl.glTexImage2D(
-            gl.GL_TEXTURE_2D, 0, gl.GL_LUMINANCE, w, h, 0, gl.GL_LUMINANCE,
+            gl.GL_TEXTURE_2D, 0, gl.GL_RGB_SNORM, w, h, 0, gl.GL_LUMINANCE,
             gl.GL_FLOAT, texdata
         )
 
@@ -303,7 +317,9 @@ class TextureQuad2D(object):
         gl.glNewList(texlist, gl.GL_COMPILE)
 
         gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
+                               gl.GL_ONE, gl.GL_ZERO)
         gl.glEnable(gl.GL_TEXTURE_2D)
 
         x0, y0, x1, y1 = rect
@@ -385,12 +401,19 @@ class TextureQuad1D(object):
                            gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
         gl.glTexParameterf(gl.GL_TEXTURE_1D,
                            gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
-        gl.glTexParameterf(gl.GL_TEXTURE_1D,
-                           gl.GL_TEXTURE_MAG_FILTER, filt)
+        gl.glTexParameterf(gl.GL_TEXTURE_1D, gl.GL_TEXTURE_MAG_FILTER, filt)
         gl.glTexParameterf(gl.GL_TEXTURE_1D,
                            gl.GL_TEXTURE_MIN_FILTER, filt)
 
-        gl.glTexImage1D(gl.GL_TEXTURE_1D, 0, gl.GL_LUMINANCE16, len(texdata),
+        # set the swizzle mask to map R -> (G, B), 1 -> A
+        gl.glTexParameterf(gl.GL_TEXTURE_1D,
+                           gl.GL_TEXTURE_SWIZZLE_G, gl.GL_RED)
+        gl.glTexParameterf(gl.GL_TEXTURE_1D,
+                           gl.GL_TEXTURE_SWIZZLE_B, gl.GL_RED)
+        gl.glTexParameterf(gl.GL_TEXTURE_1D,
+                           gl.GL_TEXTURE_SWIZZLE_A, gl.GL_ONE)
+
+        gl.glTexImage1D(gl.GL_TEXTURE_1D, 0, gl.GL_R16_SNORM, len(texdata),
                         0, gl.GL_LUMINANCE, gl.GL_FLOAT, texdata)
 
         # display list for the texture
@@ -398,10 +421,9 @@ class TextureQuad1D(object):
         texlist = gl.glGenLists(1)
         gl.glNewList(texlist, gl.GL_COMPILE)
 
-        # we use blending so that the opacity of the grating varies
-        # sinusoidally
         gl.glEnable(gl.GL_BLEND)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
+                               gl.GL_ONE, gl.GL_ZERO)
         gl.glEnable(gl.GL_TEXTURE_1D)
 
         x0, y0, x1, y1 = rect
@@ -949,9 +971,8 @@ class DriftingSinusoid(DriftingGrating):
         phaseangle = np.linspace(
             0, 2 * np.pi * self.n_cycles, self.grating_nsamples)
 
-        # the texture values should be float32, range [0.,1.]
-        sinusoid = self.grating_amplitude * \
-            np.float32((np.sin(phaseangle) + 1.) / 2.)
+        # the texture values should be float32, range [-1., 1.]
+        sinusoid = self.grating_amplitude * np.float32(np.sin(phaseangle) / 2.)
 
         self._texdata = sinusoid
         self._phase = 0
@@ -973,7 +994,10 @@ class DriftingSquarewave(DriftingGrating):
         t = np.arange(self.grating_nsamples)
         period = self.grating_nsamples // self.n_cycles
         squarewave = np.float32(rectwave(t, period, self.duty_cycle))
-        squarewave = (squarewave - 0.5) * self.grating_amplitude + 0.5
+
+        # the texture values should be float32, range [-1., 1.]
+        squarewave = (squarewave - 0.5) * self.grating_amplitude
+
         self._texdata = squarewave
         self._phase = 0
 
@@ -1020,9 +1044,9 @@ class FlashingCheckerboard(FlashingTexture):
 
     def _make_texdata(self):
 
-        self._texdata = np.zeros(self.gridshape, dtype=np.float)
-        self._texdata[::2, ::2] = 1
-        self._texdata[1::2, 1::2] = 1
+        self._texdata = np.zeros(self.gridshape, dtype=np.float32) - 0.5
+        self._texdata[0::2, 0::2] += 1.
+        self._texdata[1::2, 1::2] += 1.
 
     def _buildstim(self):
         self._make_texdata()
@@ -1037,4 +1061,4 @@ class FlashingCheckerboard(FlashingTexture):
         alpha = polarity * self.checker_amplitude[self.currentstim]
 
         # draw the texture
-        self._texture.draw(color=(1., 1., 1., alpha))
+        self._texture.draw(color=(self.checker_rgb + (alpha,)))

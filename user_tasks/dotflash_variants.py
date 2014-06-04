@@ -457,3 +457,10 @@ class position_test(widescreen_dotflash1):
         self._olddraw()
         print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],self.ypos[self.currentstim])
 
+
+class subtractive_color_demo(inverted_dotflash1):
+
+    taskname = 'subtractive_color_demo'
+    subclass = 'test_stimuli'
+    interval = 1.
+    dot_color = (-1, 0, 0, 1)
