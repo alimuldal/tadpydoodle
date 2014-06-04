@@ -16,7 +16,7 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from base_tasks.task_classes import DotFlash,WeberDotFlash
+from base_tasks.task_classes import DotFlash,WeberDotFlash, OnOffDotFlash
 
 ################################################################################
 # dotflash-derived stimulus classes
@@ -286,9 +286,11 @@ class weber_dotflash1(WeberDotFlash):
     n_luminances = 5
     luminance_range = (0.,1.)
 
+    dot_rgb = (1., 1., 1.)
+
     # approximate exponent for psychophysical contrast curve. this is used
     # to select reasonably-spaced luminance values.
-    gamma = 1.8
+    dot_gamma = 1.8
 
     # stimulus timing
     initblanktime = 2.
@@ -463,4 +465,43 @@ class subtractive_color_demo(inverted_dotflash1):
     taskname = 'subtractive_color_demo'
     subclass = 'test_stimuli'
     interval = 1.
+    initblanktime = 0
+    finalblanktime = 0
     dot_color = (-1, 0, 0, 1)
+
+
+class on_off_test(OnOffDotFlash):
+
+    taskname = 'on_off_test'
+    subclass = 'test_stimuli'
+
+    # stimulus-specific parameters
+    gridshape = (6, 6)
+    gridlim = (0.9,0.9)
+    radius = 0.075
+    nvertices = 64
+
+    background_color = (0.5, 0.5, 0.5, 1.0)
+    dot_rgb = (1., 1., 1.)
+    luminance_step = 0.5
+
+    # stimulus timing
+    initblanktime = 0.
+    finalblanktime = 0.
+    interval = 0.1
+    on_duration = 0.1
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    full_nstim = np.prod(gridshape + (2,))
+    #-----------------------------------------------------------------------
+    gen = np.random.RandomState(0)
+    fullpermutation = gen.permutation(full_nstim)
+
+    #-----------------------------------------------------------------------
+
+    # take the first 18 of the full 72 states
+    nstim = full_nstim
+    permutation = fullpermutation[:nstim]

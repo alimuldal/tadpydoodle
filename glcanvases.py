@@ -591,7 +591,7 @@ class StimCanvas(GLCanvas):
             # additive/subtractive blending in the framebuffer!
 
             # gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_FALSE);
-            # gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_FALSE);
+            gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_FALSE);
             gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_FALSE);
 
             self.master.current_task._display()
@@ -600,7 +600,7 @@ class StimCanvas(GLCanvas):
             # we're done drawing the stimulus
 
             # gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_TRUE);
-            # gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_TRUE);
+            gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_TRUE);
             gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_TRUE);
 
             gl.glPopMatrix()

@@ -691,7 +691,6 @@ class DotFlash(Task):
 
 
 class WeberDotFlash(DotFlash):
-
     """
     Flashing dots with pseudorandom positions and luminance values.
     Luminance values are distributed on a log scale.
@@ -711,14 +710,52 @@ class WeberDotFlash(DotFlash):
 
         nl = self.n_luminances
         lmin, lmax = self.luminance_range
-        l_vals = np.linspace(lmin, lmax, nl) ** self.gamma
+        l_vals = np.linspace(lmin, lmax, nl) ** self.dot_gamma
 
         x, y, l = np.meshgrid(x_vals, y_vals, l_vals)
-        self.xpos = x.ravel()[self.permutation]
-        self.ypos = y.ravel()[self.permutation]
-        l = l.ravel()[self.permutation]
+        self.xpos = x.flat[self.permutation]
+        self.ypos = y.flat[self.permutation]
+        l = l.flat[self.permutation]
 
-        self.dot_color = l[:, np.newaxis] * np.ones(4)
+        self.dot_color = np.zeros((self.nstim, 4))
+        self.dot_color[:, :3] = self.dot_rgb
+        self.dot_color[:, 3] = l
+
+    def _drawstim(self):
+        # draw the dot in the current position
+        self._dot.draw(self.xpos[self.currentstim],
+                       self.ypos[self.currentstim],
+                       0.,
+                       self.dot_color[self.currentstim]
+                       )
+
+class OnOffDotFlash(DotFlash):
+    """
+    Dots with a step increment or decrement in luminance relative to the
+    stimulus background
+    """
+
+    subclass = 'on_off_dot_flash'
+
+    def _make_positions(self):
+
+        assert len(self.permutation) == self.nstim
+
+        # generate a random permutation of x,y coordinates and
+        # luminances
+        nx, ny = self.gridshape
+        x_vals = np.linspace(-1, 1, nx) * self.gridlim[0] * self.area_aspect
+        y_vals = np.linspace(-1, 1, ny) * self.gridlim[1]
+
+        l_vals = self.luminance_step, -self.luminance_step
+
+        x, y, l = np.meshgrid(x_vals, y_vals, l_vals)
+        self.xpos = x.flat[self.permutation]
+        self.ypos = y.flat[self.permutation]
+        l = l.flat[self.permutation]
+
+        self.dot_color = np.zeros((self.nstim, 4))
+        self.dot_color[:, :3] = self.dot_rgb * l[:, None]
         self.dot_color[:, 3] = 1.
 
     def _drawstim(self):
@@ -728,6 +765,7 @@ class WeberDotFlash(DotFlash):
                        0.,
                        self.dot_color[self.currentstim]
                        )
+
 
 
 class BarFlash(Task):
