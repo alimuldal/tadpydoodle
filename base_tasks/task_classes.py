@@ -53,6 +53,44 @@ Conventions for stimulus orientation
 #
 # stimulus primitives
 
+class StaticBox(object):
+    """
+    Literally just a quad
+
+    Parameters:
+        rect
+        color
+
+    Methods:
+        draw(color)
+    """
+    def __init__(self, rect=(-1, -1, 1, 1)):
+        """ Create the display list """
+
+        x0, y0, x1, y1 = rect
+
+        self.display_list = gl.glGenLists(1)
+
+        gl.glNewList(self.display_list, gl.GL_COMPILE)
+
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
+                               gl.GL_ONE, gl.GL_ZERO)
+
+        gl.glBegin(gl.GL_QUADS)
+        gl.glVertex2f(x0, y1)
+        gl.glVertex2f(x0, y0)
+        gl.glVertex2f(x1, y0)
+        gl.glVertex2f(x1, y1)
+        gl.glEnd()
+
+        gl.glDisable(gl.GL_BLEND)
+        gl.glEndList()
+
+    def draw(self, color=(1., 1., 1., 1.)):
+        """ Just draw the box (can vary color) """
+        gl.glColor4f(*color)
+        gl.glCallList(self.display_list)
 
 class Bar(object):
 
@@ -65,14 +103,14 @@ class Bar(object):
         color
 
     Methods:
-        draw(self,x,y,z,angle)
+        draw(self,x,y,z,angle,color)
     """
 
     def __init__(self, width, height):
         """ Create the display list """
-        self.barlist = gl.glGenLists(1)
+        self.display_list = gl.glGenLists(1)
 
-        gl.glNewList(self.barlist, gl.GL_COMPILE)
+        gl.glNewList(self.display_list, gl.GL_COMPILE)
 
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
@@ -95,7 +133,7 @@ class Bar(object):
         gl.glTranslate(x, y, z)
         gl.glRotate(angle, 0., 0., 1.)
         gl.glColor4f(*color)
-        gl.glCallList(self.barlist)
+        gl.glCallList(self.display_list)
         gl.glPopMatrix()
 
 
@@ -132,8 +170,8 @@ class Dot(object):
 
     def __init__(self, radius, nvertices):
         """ Create the display list """
-        self.dotlist = gl.glGenLists(1)
-        gl.glNewList(self.dotlist, gl.GL_COMPILE)
+        self.display_list = gl.glGenLists(1)
+        gl.glNewList(self.display_list, gl.GL_COMPILE)
 
         gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
                                gl.GL_ONE, gl.GL_ZERO)
@@ -153,7 +191,7 @@ class Dot(object):
         gl.glPushMatrix()
         gl.glTranslate(x, y, z)
         gl.glColor4f(*color)
-        gl.glCallList(self.dotlist)
+        gl.glCallList(self.display_list)
         gl.glPopMatrix()
 
 
@@ -177,8 +215,8 @@ class CircularStencil(object):
 
     def __init__(self, radius=1, nvertices=256, polarity=1):
 
-        self.stencillist = gl.glGenLists(1)
-        gl.glNewList(self.stencillist, gl.GL_COMPILE)
+        self.display_list = gl.glGenLists(1)
+        gl.glNewList(self.display_list, gl.GL_COMPILE)
 
         # don't write to pixel RGBA values
         gl.glColorMask(0, 0, 0, 0)
@@ -208,7 +246,7 @@ class CircularStencil(object):
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glPushMatrix()
         gl.glTranslate(x, y, z)
-        gl.glCallList(self.stencillist)
+        gl.glCallList(self.display_list)
         gl.glPopMatrix()
 
 
@@ -231,8 +269,8 @@ class RectangularStencil(object):
 
     def __init__(self, width, height, polarity=1):
 
-        self.stencillist = gl.glGenLists(1)
-        gl.glNewList(self.stencillist, gl.GL_COMPILE)
+        self.display_list = gl.glGenLists(1)
+        gl.glNewList(self.display_list, gl.GL_COMPILE)
 
         # don't write to pixel RGBA values
         gl.glColorMask(0, 0, 0, 0)
@@ -265,7 +303,7 @@ class RectangularStencil(object):
         gl.glPushMatrix()
         gl.glTranslate(x, y, z)
         gl.glRotate(angle, 0, 0, 1)
-        gl.glCallList(self.stencillist)
+        gl.glCallList(self.display_list)
         gl.glPopMatrix()
 
 class TextureQuad2D(object):
@@ -320,8 +358,8 @@ class TextureQuad2D(object):
 
         # display list for the texture
         # --------------------------------------------------------------
-        texlist = gl.glGenLists(1)
-        gl.glNewList(texlist, gl.GL_COMPILE)
+        display_list = gl.glGenLists(1)
+        gl.glNewList(display_list, gl.GL_COMPILE)
 
         gl.glEnable(gl.GL_BLEND)
         # gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -348,7 +386,7 @@ class TextureQuad2D(object):
         gl.glEndList()
         # --------------------------------------------------------------
 
-        self.texlist = texlist
+        self.display_list = display_list
 
         pass
 
@@ -371,7 +409,7 @@ class TextureQuad2D(object):
         gl.glRotatef(-angle, 0, 0, 1)
         gl.glColor4f(*color)
 
-        gl.glCallList(self.texlist)
+        gl.glCallList(self.display_list)
 
         # we pop and go BACK to the modelview matrix for safety!!!
         gl.glPopMatrix()
@@ -425,8 +463,8 @@ class TextureQuad1D(object):
 
         # display list for the texture
         # --------------------------------------------------------------
-        texlist = gl.glGenLists(1)
-        gl.glNewList(texlist, gl.GL_COMPILE)
+        display_list = gl.glGenLists(1)
+        gl.glNewList(display_list, gl.GL_COMPILE)
 
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
@@ -452,7 +490,7 @@ class TextureQuad1D(object):
         gl.glEndList()
         # --------------------------------------------------------------
 
-        self.texlist = texlist
+        self.display_list = display_list
 
     def draw(self, offset=0., angle=0., color=(1., 1., 1., 1.)):
         """
@@ -471,7 +509,7 @@ class TextureQuad1D(object):
         gl.glTranslate(-offset, 0, 0)
         gl.glRotatef(-angle, 0, 0, 1)
         gl.glColor4f(*color)
-        gl.glCallList(self.texlist)
+        gl.glCallList(self.display_list)
 
         # we pop and go BACK to the modelview matrix for safety!!!
         gl.glPopMatrix()
@@ -694,6 +732,10 @@ class WeberDotFlash(DotFlash):
     """
     Flashing dots with pseudorandom positions and luminance values.
     Luminance values are distributed on a log scale.
+
+    Implements:
+        _make_positions
+        _drawstim
     """
 
     subclass = 'weber_dot_flash'
@@ -733,6 +775,10 @@ class OnOffDotFlash(DotFlash):
     """
     Dots with a step increment or decrement in luminance relative to the
     stimulus background
+
+    Implements:
+        _make_positions
+        _drawstim
     """
 
     subclass = 'on_off_dot_flash'
@@ -766,6 +812,30 @@ class OnOffDotFlash(DotFlash):
                        self.dot_color[self.currentstim]
                        )
 
+class FullFieldFlash(Task):
+    """
+    A full field flashing stimulus
+
+    Implements:
+        _buildstim
+        _drawstim
+    """
+
+    subclass = 'full_field_flash'
+
+    def _buildstim(self):
+        self._box = StaticBox()
+
+    def _drawstim(self):
+
+        # update the current polarity
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        period = (1. / self.flash_hz)
+        polarity = 2. * ((on_dt % period) > (period / 2.)) - 1
+        alpha = polarity * self.flash_amplitude[self.currentstim]
+
+        # draw the texture
+        self._box.draw(color=(self.fullfield_rgb + (alpha,)))
 
 
 class BarFlash(Task):
@@ -1062,7 +1132,7 @@ class FlashingTexture(Task):
     subclass = 'flashing_texture'
 
     def _make_texdata(self):
-        pass
+        raise NotImplementedError('Override me in a subclass!')
 
     def _buildstim(self):
         self._make_texdata()
