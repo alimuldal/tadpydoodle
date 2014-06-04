@@ -312,13 +312,6 @@ class StimCanvas(GLCanvas):
         we're rendering.
         """
 
-        # we don't want to clamp floating point pixel values to [0, 1], since
-        # allowing negative pixel values allows us do fancy
-        # additive/subtractive blending in the framebuffer!
-        gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_FALSE);
-        gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_FALSE);
-        gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_FALSE);
-
         xres, yres = self.master.x_resolution, self.master.y_resolution
 
         # create & bind an EMPTY texture object. we will render the
@@ -342,6 +335,7 @@ class StimCanvas(GLCanvas):
         gl.glTexImage2D(
             gl.GL_TEXTURE_2D,       # target
             0,                      # mipmap level
+            # gl.GL_RGB,              # internal format
             gl.GL_RGB_SNORM,        # internal format (signed!)
             xres,                   # width
             yres,                   # height
@@ -591,7 +585,24 @@ class StimCanvas(GLCanvas):
             # rotate 90o to account for rotation of the projector
             gl.glRotate(-90, 0, 0, 1)
             gl.glScissor(*self.stimbounds)
+
+            # we don't want to clamp floating point pixel values to [0, 1],
+            # since allowing negative pixel values allows us do fancy
+            # additive/subtractive blending in the framebuffer!
+
+            # gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_FALSE);
+            # gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_FALSE);
+            gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_FALSE);
+
             self.master.current_task._display()
+
+            # NB: turning off clamping is expensive, so turn it back on once
+            # we're done drawing the stimulus
+
+            # gl.glClampColor(gl.GL_CLAMP_READ_COLOR, gl.GL_TRUE);
+            # gl.glClampColor(gl.GL_CLAMP_VERTEX_COLOR, gl.GL_TRUE);
+            gl.glClampColor(gl.GL_CLAMP_FRAGMENT_COLOR, gl.GL_TRUE);
+
             gl.glPopMatrix()
 
         # draw the crosshairs
