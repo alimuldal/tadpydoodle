@@ -304,10 +304,17 @@ class TextureQuad2D(object):
         gl.glTexParameterf(gl.GL_TEXTURE_2D,
                            gl.GL_TEXTURE_MIN_FILTER, filt)
 
+        # set the swizzle mask to map R -> (G, B), 1 -> A
+        gl.glTexParameterf(gl.GL_TEXTURE_2D,
+                           gl.GL_TEXTURE_SWIZZLE_G, gl.GL_RED)
+        gl.glTexParameterf(gl.GL_TEXTURE_2D,
+                           gl.GL_TEXTURE_SWIZZLE_B, gl.GL_RED)
+        gl.glTexParameterf(gl.GL_TEXTURE_2D,
+                           gl.GL_TEXTURE_SWIZZLE_A, gl.GL_ONE)
         h, w = texdata.shape
 
         gl.glTexImage2D(
-            gl.GL_TEXTURE_2D, 0, gl.GL_RGB_SNORM, w, h, 0, gl.GL_LUMINANCE,
+            gl.GL_TEXTURE_2D, 0, gl.GL_R16_SNORM, w, h, 0, gl.GL_LUMINANCE,
             gl.GL_FLOAT, texdata
         )
 
