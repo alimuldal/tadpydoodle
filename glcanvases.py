@@ -520,6 +520,7 @@ class StimCanvas(GLCanvas):
         """
         pass
 
+    @profile
     def onDraw(self, event=None):
         """
         This is where actual OpenGL shit goes down

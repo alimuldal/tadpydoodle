@@ -30,9 +30,10 @@ class gratings1(DriftingSinusoid):
     aperture_radius = 1.
     aperture_nvertices = 256
     grating_color = (1.,1.,1.,1.)
+    grating_offset = 0.         # controls the zero value of grating
     grating_amplitude = 1.      # amplitude of luminance change (1 == max)
     grating_nsamples = 1000     # number of samples in grating
-    n_cycles = 5.           # number of full cycles in texture
+    n_cycles = 5.               # number of full cycles in texture
     grating_speed = 0.5         # phase change/frame
 
     # stimulus timing
@@ -175,8 +176,11 @@ class grating_blending_demo(gratings_nointerval1):
     subclass = 'test_stimuli'
 
     background_color = (0.5, 0.5, 0.5, 1.0)
-    grating_color = (-1.0, 1.0, 0.0, 1.0)
+    grating_color = (1.0, 0.0, 0.0, 1.0)
 
+    # this sets the mean value of the sinusoid to 0, so that the negative phase
+    # is subtractive and the positive phase is additive
+    grating_offset = -0.5
 
 # class orientation_test(gratings1):
 

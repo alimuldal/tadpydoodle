@@ -971,8 +971,9 @@ class DriftingSinusoid(DriftingGrating):
         phaseangle = np.linspace(
             0, 2 * np.pi * self.n_cycles, self.grating_nsamples)
 
-        # the texture values should be float32, range [-1., 1.]
-        sinusoid = self.grating_amplitude * np.float32(np.sin(phaseangle) / 2.)
+        sinusoid = np.float32(np.sin(phaseangle)) / 2.  # range [-0.5, 0.5]
+        sinusoid *= self.grating_amplitude              # scaling
+        sinusoid += 0.5 + self.grating_offset           # offset origin
 
         self._texdata = sinusoid
         self._phase = 0
@@ -993,10 +994,11 @@ class DriftingSquarewave(DriftingGrating):
 
         t = np.arange(self.grating_nsamples)
         period = self.grating_nsamples // self.n_cycles
-        squarewave = np.float32(rectwave(t, period, self.duty_cycle))
 
-        # the texture values should be float32, range [-1., 1.]
-        squarewave = (squarewave - 0.5) * self.grating_amplitude
+        # range [-0.5, 0.5]
+        squarewave = np.float32(rectwave(t, period, self.duty_cycle)) - 0.5
+        squarewave *= self.grating_amplitude        # scaling
+        squarewave += 0.5 + self.grating_offset     # offset origin
 
         self._texdata = squarewave
         self._phase = 0
