@@ -837,6 +837,21 @@ class FullFieldFlash(Task):
         # draw the texture
         self._box.draw(color=(self.fullfield_rgb + (alpha,)))
 
+class FullFieldSinusoid(FullFieldFlash):
+    """
+    A full field sinusoidal stimulus
+    """
+
+    def _drawstim(self):
+
+        # current phase
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        phase = np.sin(2 * np.pi * on_dt * self.sinusoid_hz +
+                       self.phase_offset)
+        alpha = phase * self.sinusoid_amplitude[self.currentstim]
+
+        # draw the texture
+        self._box.draw(color=(self.fullfield_rgb + (alpha,)))
 
 class BarFlash(Task):
 
@@ -1175,7 +1190,20 @@ class FlashingCheckerboard(FlashingTexture):
         on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
         period = (1. / self.flash_hz)
         polarity = 2. * ((on_dt % period) > (period / 2.)) - 1
-        alpha = polarity * self.checker_amplitude[self.currentstim]
+        alpha = polarity * self.flash_amplitude[self.currentstim]
+
+        # draw the texture
+        self._texture.draw(color=(self.checker_rgb + (alpha,)))
+
+class SinusoidCheckerboard(FlashingCheckerboard):
+
+    def _drawstim(self):
+
+        # current phase
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        phase = np.sin(2 * np.pi * on_dt * self.sinusoid_hz +
+                       self.phase_offset)
+        alpha = phase * self.sinusoid_amplitude[self.currentstim]
 
         # draw the texture
         self._texture.draw(color=(self.checker_rgb + (alpha,)))
