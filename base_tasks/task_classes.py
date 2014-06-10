@@ -831,7 +831,7 @@ class FullFieldFlash(Task):
         # update the current polarity
         on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
         period = (1. / self.flash_hz)
-        polarity = 2. * ((on_dt % period) > (period / 2.)) - 1
+        polarity = 2. * ((on_dt % period) < (period / 2.)) - 1
         alpha = polarity * self.flash_amplitude[self.currentstim]
 
         # draw the texture
@@ -890,11 +890,18 @@ class BarFlash(Task):
                         )
 
     def _drawstim(self):
+
+        # update the current polarity
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        period = (1. / self.flash_hz)
+        is_on = (on_dt % period) < (period / 2.)
+        alpha = is_on * self.flash_amplitude
+
         # draw the bar in the current position/orientation
         self._bar.draw(self.xpos[self.currentstim],
                        self.ypos[self.currentstim],
                        angle=self.orientation[self.currentstim],
-                       color=self.bar_color)
+                       color=self.bar_rgb + (alpha,))
 
 
 class DriftingBar(Task):
@@ -1189,7 +1196,7 @@ class FlashingCheckerboard(FlashingTexture):
         # update the current polarity
         on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
         period = (1. / self.flash_hz)
-        polarity = 2. * ((on_dt % period) > (period / 2.)) - 1
+        polarity = 2. * ((on_dt % period) < (period / 2.)) - 1
         alpha = polarity * self.flash_amplitude[self.currentstim]
 
         # draw the texture
