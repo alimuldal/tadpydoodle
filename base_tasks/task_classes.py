@@ -24,6 +24,11 @@ OpenGL.ERROR_CHECKING = False
 OpenGL.ERROR_LOGGING = False
 import OpenGL.GL as gl
 
+# dummy glBlendFuncSeparate in order to create instances of tasks in the
+# absence of an OpenGL context
+if not gl.glBlendFuncSeparate:
+    gl.glBlendFuncSeparate = lambda a, b, c, d: None
+
 """
 ################################################################################
 Conventions for stimulus orientation
@@ -1154,7 +1159,8 @@ class FlashingTexture(Task):
     subclass = 'flashing_texture'
 
     def _make_texdata(self):
-        raise NotImplementedError('Override me in a subclass!')
+        # raise NotImplementedError('Override me in a subclass!')
+        pass
 
     def _buildstim(self):
         self._make_texdata()

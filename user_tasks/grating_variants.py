@@ -94,6 +94,7 @@ class squarewave1(DriftingSquarewave):
     aperture_nvertices = 256
     grating_color = (1.,1.,1.,1.)
     grating_amplitude = 1.      # amplitude of luminance change (1 == max)
+    grating_offset = 0
     grating_nsamples = 1000     # number of samples in grating
     n_cycles = 5.           # number of full cycles in texture
     grating_speed = 0.5         # phase change/frame
