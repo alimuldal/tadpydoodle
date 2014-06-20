@@ -39,11 +39,12 @@ class AppThread(multiprocessing.Process):
     # default configuration: [section] variable = value
     template = {
         'window': {'x_resolution': 800, 'y_resolution': 600,
-                     'fullscreen': False, 'on_top': True, 'gamma': 1.7},
+                   'fullscreen': False, 'on_top': True, 'gamma': 1.7,
+                   'screenh':20., 'screend':10.},
         'photodiode': {'show_photodiode': True, 'p_xpos': 300.,
-                         'p_ypos': 100., 'p_scale': 20.},
+                       'p_ypos': 100., 'p_scale': 20.},
         'crosshairs': {'show_crosshairs': True, 'c_xpos': 300.,
-                         'c_ypos': 600., 'c_scale': 145.},
+                       'c_ypos': 600., 'c_scale': 145.},
         'stimulus': {'show_preview': True, 'log_framerate': False,
                      'log_nframes': 10000, 'run_loop': True, 'vblank_mode': -1,
                      'min_delta_t': 2., 'framerate_window': 100},
@@ -142,8 +143,8 @@ class AppThread(multiprocessing.Process):
             if parser.has_section(sect):
                 for option, value in subsect.iteritems():
                     if parser.has_option(sect, option):
-        # use the type of the default value in order to determine how to
-        # convert the string that the parser returns
+                        # use the type of the default value in order to determine how to
+                        # convert the string that the parser returns
                         opt_type = type(value)
                         newstr = parser.get(sect, option)
                         if opt_type == bool:

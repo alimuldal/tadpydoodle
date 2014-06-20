@@ -21,6 +21,7 @@ from wx.lib.mixins import listctrl as listmix
 import cPickle
 import glcanvases as glc
 reload(glc)
+import numpy as np
 
 
 def seconds2human(secs):
@@ -566,49 +567,49 @@ class AdjustPanel(wx.Panel):
         # button position controls -------------------------------------
         # button_box = wx.StaticBox(self,wx.VERTICAL,'Position && scale')
 
-        # translation
-        names = ['UP', 'LEFT', 'RIGHT', 'DOWN']
-        buttons = [wx.Button(self, -1, name, size=(60, -1)) for name in names]
-        [bb.Bind(wx.EVT_BUTTON, self.onButton) for bb in buttons]
+        # # translation
+        # names = ['UP', 'LEFT', 'RIGHT', 'DOWN']
+        # buttons = [wx.Button(self, -1, name, size=(60, -1)) for name in names]
+        # [bb.Bind(wx.EVT_BUTTON, self.onButton) for bb in buttons]
 
-        # shove them all in a GridBagSizer
-        movebag = wx.GridBagSizer(vgap=0, hgap=0)
-        u, l, r, d = buttons
-        movebag.Add(u, pos=(0, 1), span=(1, 2), flag=wx.EXPAND)
-        movebag.Add(l, pos=(1, 0), span=(1, 2), flag=wx.EXPAND)
-        movebag.Add(r, pos=(1, 2), span=(1, 2), flag=wx.EXPAND)
-        movebag.Add(d, pos=(2, 1), span=(1, 2), flag=wx.EXPAND)
-        # [movebag.AddGrowableRow(rr) for rr in xrange(3)]
-        # [movebag.AddGrowableCol(cc) for cc in xrange(4)]
-        self.buttons = dict(zip(names, buttons))
+        # # shove them all in a GridBagSizer
+        # movebag = wx.GridBagSizer(vgap=0, hgap=0)
+        # u, l, r, d = buttons
+        # movebag.Add(u, pos=(0, 1), span=(1, 2), flag=wx.EXPAND)
+        # movebag.Add(l, pos=(1, 0), span=(1, 2), flag=wx.EXPAND)
+        # movebag.Add(r, pos=(1, 2), span=(1, 2), flag=wx.EXPAND)
+        # movebag.Add(d, pos=(2, 1), span=(1, 2), flag=wx.EXPAND)
+        # # [movebag.AddGrowableRow(rr) for rr in xrange(3)]
+        # # [movebag.AddGrowableCol(cc) for cc in xrange(4)]
+        # self.buttons = dict(zip(names, buttons))
 
-        move_vsizer = wx.BoxSizer(wx.VERTICAL)
-        move_vsizer.Add((0, 0), 1, wx.EXPAND)
-        move_vsizer.Add(movebag, 0)
-        move_vsizer.Add((0, 0), 1, wx.EXPAND)
+        # move_vsizer = wx.BoxSizer(wx.VERTICAL)
+        # move_vsizer.Add((0, 0), 1, wx.EXPAND)
+        # move_vsizer.Add(movebag, 0)
+        # move_vsizer.Add((0, 0), 1, wx.EXPAND)
 
-        # scaling
-        names = ['+', '-']
-        buttons = [wx.Button(self, -1, name, size=(30, -1)) for name in names]
-        [bb.Bind(wx.EVT_LEFT_DOWN, self.onButton) for bb in buttons]
-        self.buttons.update(dict(zip(names, buttons)))
+        # # scaling
+        # names = ['+', '-']
+        # buttons = [wx.Button(self, -1, name, size=(30, -1)) for name in names]
+        # [bb.Bind(wx.EVT_LEFT_DOWN, self.onButton) for bb in buttons]
+        # self.buttons.update(dict(zip(names, buttons)))
 
-        # shove them all in a FlexGridSizer
-        scaleflex = wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
-        scaleflex.AddMany([(button, 1, wx.EXPAND) for button in buttons])
-        # [scaleflex.AddGrowableRow(rr,1) for rr in xrange(2)]
+        # # shove them all in a FlexGridSizer
+        # scaleflex = wx.FlexGridSizer(rows=2, cols=1, vgap=0, hgap=0)
+        # scaleflex.AddMany([(button, 1, wx.EXPAND) for button in buttons])
+        # # [scaleflex.AddGrowableRow(rr,1) for rr in xrange(2)]
 
-        scale_vsizer = wx.BoxSizer(wx.VERTICAL)
-        scale_vsizer.Add((0, 0), 1, wx.EXPAND)
-        scale_vsizer.Add(scaleflex, 0)
-        scale_vsizer.Add((0, 0), 1, wx.EXPAND)
+        # scale_vsizer = wx.BoxSizer(wx.VERTICAL)
+        # scale_vsizer.Add((0, 0), 1, wx.EXPAND)
+        # scale_vsizer.Add(scaleflex, 0)
+        # scale_vsizer.Add((0, 0), 1, wx.EXPAND)
 
-        # button_hsizer = wx.StaticBoxSizer(button_box,wx.HORIZONTAL)
-        button_hsizer = wx.BoxSizer(wx.HORIZONTAL)
-        button_hsizer.Add((0, 0), 1, wx.EXPAND)
-        button_hsizer.Add(move_vsizer, 0, wx.ALIGN_CENTER | wx.RIGHT, 5)
-        button_hsizer.Add(scale_vsizer, 0, wx.ALIGN_CENTER | wx.LEFT, 5)
-        button_hsizer.Add((0, 0), 1, wx.EXPAND)
+        # # button_hsizer = wx.StaticBoxSizer(button_box,wx.HORIZONTAL)
+        # button_hsizer = wx.BoxSizer(wx.HORIZONTAL)
+        # button_hsizer.Add((0, 0), 1, wx.EXPAND)
+        # button_hsizer.Add(move_vsizer, 0, wx.ALIGN_CENTER | wx.RIGHT, 5)
+        # button_hsizer.Add(scale_vsizer, 0, wx.ALIGN_CENTER | wx.LEFT, 5)
+        # button_hsizer.Add((0, 0), 1, wx.EXPAND)
 
         # photodiode controls ------------------------------------------
         p_box = wx.StaticBox(self, wx.VERTICAL, label='Photodiode')
@@ -699,7 +700,7 @@ class AdjustPanel(wx.Panel):
         # shove everything together ------------------------------------
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(button_hsizer, 0, wx.EXPAND | wx.ALL, 20)
+        # sizer.Add(button_hsizer, 0, wx.EXPAND | wx.ALL, 20)
         sizer.Add((0, 0), 1, wx.EXPAND)
         sizer.Add(p_box_sizer, 0, wx.EXPAND | wx.ALL, 5)
         sizer.Add(c_box_sizer, 0, wx.EXPAND | wx.ALL, 5)
@@ -1006,26 +1007,83 @@ class OptionPanel(wx.Panel):
         check_sizer.AddMany([(cc, 0, wx.EXPAND | wx.ALL, 5)
                             for cc in checkboxes])
 
-        # text box for gamma adjustment
+        # gamma adjustment
         # --------------------------------------------------------------
-        ref = AttributeRef(self.master, 'gamma')
+        gamma = AttributeRef(self.master, 'gamma')
         gammactrl = wx.TextCtrl(
-            self, size=(60, -1), value=str(ref.get()),
+            self, size=(60, -1), value=str(gamma.get()),
             style=wx.TE_PROCESS_ENTER)
         gammactrl.Bind(wx.EVT_TEXT_ENTER, self.onGamma)
-        gammactrl.ref = ref
+        gammactrl.ref = gamma
 
         gammalabel = wx.StaticText(
-            self, -1, 'Gamma correction', size=(140, -1), style=wx.ALIGN_RIGHT)
+            self, -1, 'Gamma correction', size=(160, -1), style=wx.ALIGN_RIGHT)
 
         gamma_sizer = wx.BoxSizer(wx.HORIZONTAL)
         gamma_sizer.Add(gammalabel, 0, wx.EXPAND | wx.ALL, 5)
         gamma_sizer.Add(gammactrl, 0, wx.EXPAND | wx.ALL, 5)
         gamma_sizer.Add((0, 0), 1)
 
+        # # screen height
+        # # --------------------------------------------------------------
+        # screenh = AttributeRef(self.master, 'screenh')
+        # screenhctrl = wx.TextCtrl(
+        #     self, size=(60, -1), value=str(screenh.get()),
+        #     style=wx.TE_PROCESS_ENTER)
+        # screenhctrl.Bind(wx.EVT_TEXT_ENTER, self.onScreenwh)
+        # screenhctrl.ref = screenh
+
+        # screenhlabel = wx.StaticText(
+        #     self, -1, 'Screen height (mm)', size=(160, -1),
+        #     style=wx.ALIGN_RIGHT)
+
+        # screenh_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # screenh_sizer.Add(screenhlabel, 0, wx.EXPAND | wx.ALL, 5)
+        # screenh_sizer.Add(screenhctrl, 0, wx.EXPAND | wx.ALL, 5)
+        # screenh_sizer.Add((0, 0), 1)
+
+        # # screen distance
+        # # --------------------------------------------------------------
+        # screend = AttributeRef(self.master, 'screend')
+        # screendctrl = wx.TextCtrl(
+        #     self, size=(60, -1), value=str(screend.get()),
+        #     style=wx.TE_PROCESS_ENTER)
+        # screendctrl.Bind(wx.EVT_TEXT_ENTER, self.onScreenwh)
+        # screendctrl.ref = screend
+
+        # screendlabel = wx.StaticText(
+        #     self, -1, 'Screen distance (mm)', size=(160, -1),
+        #     style=wx.ALIGN_RIGHT)
+
+        # screend_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # screend_sizer.Add(screendlabel, 0, wx.EXPAND | wx.ALL, 5)
+        # screend_sizer.Add(screendctrl, 0, wx.EXPAND | wx.ALL, 5)
+        # screend_sizer.Add((0, 0), 1)
+
+        # self.update_angle()
+
+        # # angle subtended textbox
+        # # --------------------------------------------------------------
+        # angle_label = wx.StaticText(
+        #     self, -1, 'Vertical angle (deg):', size=(160, -1),
+        #     style=wx.ALIGN_RIGHT)
+        # self.angle_val = wx.StaticText(
+        #     self, -1, '%6.2f' % np.rad2deg(self.master.angle_subtended),
+        #     size=(60, -1), style=wx.ALIGN_RIGHT)
+
+        # angle_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # angle_sizer.Add(angle_label, 0, wx.EXPAND | wx.ALL, 5)
+        # angle_sizer.Add(self.angle_val, 0, wx.EXPAND | wx.ALL, 5)
+        # angle_sizer.Add((0, 0), 1)
+
         sizer = wx.StaticBoxSizer(check_statbox, wx.VERTICAL)
         sizer.Add(check_sizer, 0, wx.EXPAND)
+        sizer.Add(wx.StaticLine(self), 0, wx.EXPAND)
         sizer.Add(gamma_sizer, 0, wx.EXPAND)
+        # sizer.Add(wx.StaticLine(self), 0, wx.EXPAND)
+        # sizer.Add(screenh_sizer, 0, wx.EXPAND)
+        # sizer.Add(screend_sizer, 0, wx.EXPAND)
+        # sizer.Add(angle_sizer, 0, wx.EXPAND)
 
         self.SetSizerAndFit(sizer)
 
@@ -1111,6 +1169,43 @@ class OptionPanel(wx.Panel):
         # re-draw the whole scene
         self.master.stimcanvas.do_refresh_everything = True
 
+    # def onScreenwh(self, event=None):
+    #     string = event.GetString()
+    #     caller = event.GetEventObject()
+
+    #     try:
+    #         newval = float(string)
+    #         caller.ref.set(newval)
+
+    #     except ValueError:
+    #         pass
+
+    #     caller.SetValue(str(caller.ref.get()))
+
+    #     self.update_angle()
+
+    # def update_angle(self):
+
+    #     height = self.master.screenh
+    #     distance = self.master.screend
+
+    #     new_angle = 2 * np.arctan((0.5 * height) / distance)
+    #     self.master.angle_subtended = new_angle
+
+    #     try:
+    #         self.angle_val.SetLabel(
+    #             '%6.2f' % np.rad2deg(new_angle))
+
+    #     except AttributeError:
+    #         pass
+
+    #     # # do something to the shader
+    #     # self.master.stimcanvas.update_distortion()
+
+    #     # print caller, string
+
+    #     # re-draw the whole scene
+    #     self.master.stimcanvas.do_refresh_everything = True
 
 class ControlWindow(wx.Frame):
 

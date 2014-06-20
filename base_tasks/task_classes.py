@@ -29,6 +29,8 @@ import OpenGL.GL as gl
 if not gl.glBlendFuncSeparate:
     gl.glBlendFuncSeparate = lambda a, b, c, d: None
 
+import wx
+
 """
 ################################################################################
 Conventions for stimulus orientation
@@ -669,6 +671,7 @@ class Task(object):
 
                 if dt > self.finishtime and not self.finished:
                     self.finished = True
+                    wx.Bell()
 
                     print "Task '%s' finished: %s" % (
                         self.taskname, time.asctime())

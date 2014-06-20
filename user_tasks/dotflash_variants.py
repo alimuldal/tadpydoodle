@@ -52,7 +52,7 @@ class dotflash1(DotFlash):
     # random permutation of all positions copied directly from an instance
     # of the original dotflash1.task
     fullpermutation = np.array([
-    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5, 
+    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5,
     17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0])
     #-----------------------------------------------------------------------
 
@@ -505,3 +505,71 @@ class on_off_test(OnOffDotFlash):
     # take the first 18 of the full 72 states
     nstim = full_nstim
     permutation = fullpermutation[:nstim]
+
+class on_off1_2hz(OnOffDotFlash):
+
+    taskname = 'on_off1_2hz'
+
+    # stimulus-specific parameters
+    gridshape = (6, 6)
+    gridlim = (0.9,0.9)
+    radius = 0.075
+    nvertices = 64
+
+    background_color = (0.5, 0.5, 0.5, 1.0)
+    dot_rgb = (1., 1., 1.)
+    luminance_step = 0.5
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 8.
+    on_duration = 1.
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    full_nstim = np.prod(gridshape + (2,))
+    # #-----------------------------------------------------------------------
+    # gen = np.random.RandomState(0)
+    # fullpermutation = gen.permutation(full_nstim)
+    fullpermutation = np.array(
+      [26, 27, 48, 22, 30, 51,  7, 59, 34, 71, 56, 28, 31, 42, 33, 55, 70,
+       62, 43,  4, 65, 50,  2, 40, 11,  3, 54, 45, 10, 41, 49, 53, 57, 32,
+       14, 69, 19, 29, 52, 35, 18,  0, 15,  5, 16, 20, 66,  8, 13, 25, 37,
+       17, 60, 46, 63, 39, 38,  1, 58, 12, 61, 24,  6, 23, 36, 21,  9, 68,
+       67, 64, 47, 44]
+       )
+
+    # #-----------------------------------------------------------------------
+
+    # take the first 18 of the full 72 states
+    nstim = 18
+    permutation = fullpermutation[0*nstim:1*nstim]
+
+class on_off2_2hz(on_off1_2hz):
+
+    taskname = 'on_off2_2hz'
+
+    fullpermutation = on_off1_2hz.fullpermutation
+    nstim = on_off1_2hz.nstim
+    permutation = fullpermutation[1*nstim:2*nstim]
+
+
+class on_off3_2hz(on_off1_2hz):
+
+    taskname = 'on_off3_2hz'
+
+    fullpermutation = on_off1_2hz.fullpermutation
+    nstim = on_off1_2hz.nstim
+    permutation = fullpermutation[2*nstim:3*nstim]
+
+
+class on_off4_2hz(on_off1_2hz):
+
+    taskname = 'on_off4_2hz'
+
+    fullpermutation = on_off1_2hz.fullpermutation
+    nstim = on_off1_2hz.nstim
+    permutation = fullpermutation[3*nstim:4*nstim]
