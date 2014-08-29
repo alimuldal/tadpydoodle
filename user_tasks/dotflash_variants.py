@@ -482,85 +482,6 @@ class interlaced_8x8_4(interlaced_8x8_1):
         [15, 45, 31, 47, 63, 61, 11, 41, 43,  9, 59, 13, 27, 29, 57, 25]
     )
 
-################################################################################
-# tests
-
-class position_test(widescreen_dotflash1):
-    taskname = 'position_test'
-    subclass = 'test_stimuli'
-
-    area_aspect = 2
-    gridshape = (8,4)
-    gridlim = (0.8,0.8)
-    _ux = np.linspace(-1.,1.,gridshape[0])*gridlim[0]*area_aspect
-    _uy = np.linspace(-1.,1.,gridshape[1])*gridlim[1]
-    xpos,ypos = np.meshgrid(_ux,_uy)
-    xpos,ypos = xpos.flatten(),ypos.flatten()
-
-    dot_color = (0,0,0,0)
-    background_color = (1,1,1,1)
-
-    nstim = np.prod(gridshape)
-    initblanktime = 0
-    finalblanktime = 0
-    interval = 1
-    on_duration = interval
-
-    def _make_positions(self):
-        pass
-
-    _olddraw = widescreen_dotflash1._drawstim
-    def _drawstim(self):
-        self._olddraw()
-        print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],self.ypos[self.currentstim])
-
-
-class subtractive_color_demo(inverted_dotflash1):
-
-    taskname = 'subtractive_color_demo'
-    subclass = 'test_stimuli'
-    interval = 1.
-    initblanktime = 0
-    finalblanktime = 0
-    dot_color = (-1, 0, 0, 1)
-
-
-class on_off_test(OnOffDotFlash):
-
-    taskname = 'on_off_test'
-    subclass = 'test_stimuli'
-
-    # stimulus-specific parameters
-    gridshape = (6, 6)
-    gridlim = (0.9,0.9)
-    radius = 0.075
-    nvertices = 64
-
-    background_color = (0.5, 0.5, 0.5, 1.0)
-    dot_rgb = (1., 1., 1.)
-    luminance_step = 0.5
-
-    # stimulus timing
-    initblanktime = 0.
-    finalblanktime = 0.
-    interval = 0.1
-    on_duration = 0.1
-
-    # photodiode triggering parameters
-    scan_hz = 2.
-    photodiodeontime = 0.075
-
-    full_nstim = np.prod(gridshape + (2,))
-    #-----------------------------------------------------------------------
-    gen = np.random.RandomState(0)
-    fullpermutation = gen.permutation(full_nstim)
-
-    #-----------------------------------------------------------------------
-
-    # take the first 18 of the full 72 states
-    nstim = full_nstim
-    permutation = fullpermutation[:nstim]
-
 class on_off1_2hz(OnOffDotFlash):
 
     taskname = 'on_off1_2hz'
@@ -708,3 +629,84 @@ class slow_on_off_dark4(slow_on_off_bright4):
     taskname = 'slow_on_off_dark4'
     dot_color = (-1., -1., -1., 1.)
     background_color = (1., 1., 1., 1.)
+
+
+###############################################################################
+# tests
+
+class position_test(widescreen_dotflash1):
+    taskname = 'position_test'
+    subclass = 'test_stimuli'
+
+    area_aspect = 2
+    gridshape = (8,4)
+    gridlim = (0.8,0.8)
+    _ux = np.linspace(-1.,1.,gridshape[0])*gridlim[0]*area_aspect
+    _uy = np.linspace(-1.,1.,gridshape[1])*gridlim[1]
+    xpos,ypos = np.meshgrid(_ux,_uy)
+    xpos,ypos = xpos.flatten(),ypos.flatten()
+
+    dot_color = (0,0,0,0)
+    background_color = (1,1,1,1)
+
+    nstim = np.prod(gridshape)
+    initblanktime = 0
+    finalblanktime = 0
+    interval = 1
+    on_duration = interval
+
+    def _make_positions(self):
+        pass
+
+    _olddraw = widescreen_dotflash1._drawstim
+    def _drawstim(self):
+        self._olddraw()
+        print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],
+                                     self.ypos[self.currentstim])
+
+
+class subtractive_color_demo(inverted_dotflash1):
+
+    taskname = 'subtractive_color_demo'
+    subclass = 'test_stimuli'
+    interval = 1.
+    initblanktime = 0
+    finalblanktime = 0
+    dot_color = (-1, 0, 0, 1)
+
+
+class on_off_test(OnOffDotFlash):
+
+    taskname = 'on_off_test'
+    subclass = 'test_stimuli'
+
+    # stimulus-specific parameters
+    gridshape = (6, 6)
+    gridlim = (0.9,0.9)
+    radius = 0.075
+    nvertices = 64
+
+    background_color = (0.5, 0.5, 0.5, 1.0)
+    dot_rgb = (1., 1., 1.)
+    luminance_step = 0.5
+
+    # stimulus timing
+    initblanktime = 0.
+    finalblanktime = 0.
+    interval = 0.1
+    on_duration = 0.1
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    full_nstim = np.prod(gridshape + (2,))
+    #-----------------------------------------------------------------------
+    gen = np.random.RandomState(0)
+    fullpermutation = gen.permutation(full_nstim)
+
+    #-----------------------------------------------------------------------
+
+    # take the first 18 of the full 72 states
+    nstim = full_nstim
+    permutation = fullpermutation[:nstim]

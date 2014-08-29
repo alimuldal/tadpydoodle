@@ -16,7 +16,6 @@ boy
 tmp/*
 *.orig
 *.tadplay
-user_tasks/*
 *.prof
 *.lprof
 
