@@ -57,6 +57,19 @@ for ii in xrange(20):
         {'seed':ii, 'taskname':taskname})}
     )
 
+class _inverted_gamma_1p8_flash(_gamma_1p8_flash):
+    background_color = (1., 1., 1., 1.)
+    fullfield_rgb = (-1, -1, -1)
+
+# dynamically generate 20 random permutations of the inverted fullfield flash
+# stimulus
+for ii in xrange(20):
+
+    taskname = 'inverted_gamma_1p8_flash_%02i' % (ii + 1)
+    locals().update(
+        {taskname:type(taskname, (_inverted_gamma_1p8_flash,),
+        {'seed':ii, 'taskname':taskname})}
+    )
 
 ###############################################################################
 # tests
