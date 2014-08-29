@@ -84,6 +84,28 @@ class dotflash2_2hz(dotflash2):
     taskname = 'dotflash2_2hz'
     scan_hz = 2.
 
+# dynamically generate 20 random permutations of the flashing dot locations
+for ii in xrange(20):
+
+    random_state = np.random.RandomState(ii)
+    fullpermutation = random_state.permutation(36)
+    permutation1 = fullpermutation[:18]
+    permutation2 = fullpermutation[18:]
+
+    taskname1 = 'dots_%02i_1' % (ii + 1)
+    taskname2 = 'dots_%02i_2' % (ii + 1)
+
+    locals().update(
+        {taskname1:type(taskname1, (dotflash1_2hz,),
+        {'fullpermutation':fullpermutation, 'permutation':permutation1,
+         'taskname':taskname1, 'subclass':'dots_permutations'})}
+    )
+    locals().update(
+        {taskname2:type(taskname2, (dotflash1_2hz,),
+        {'fullpermutation':fullpermutation, 'permutation':permutation2,
+        'taskname':taskname2, 'subclass':'dots_permutations'})}
+    )
+
 class inverted_dotflash1(dotflash1):
     taskname = 'inverted_dotflash1'
     background_color = (1.,1.,1.,1.)
@@ -230,6 +252,14 @@ class resp_map(DotFlash):
         if self.stim_on_last_frame and not self._stimon_prev:
             self.print_pos()
         self._stimon_prev = self.stim_on_last_frame
+
+    # required in order to make instances of this class pickleable
+    # (see http://stackoverflow.com/a/2050357/1461210)
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
 
 def printgrid(nx,ny,idx):
     gridstr = ''
@@ -573,3 +603,83 @@ class on_off4_2hz(on_off1_2hz):
     fullpermutation = on_off1_2hz.fullpermutation
     nstim = on_off1_2hz.nstim
     permutation = fullpermutation[3*nstim:4*nstim]
+
+
+class slow_on_off_bright1(DotFlash):
+
+    subclass = 'slow_on_off'
+    taskname = 'slow_on_off_bright1'
+
+    # stimulus-specific parameters
+    gridshape = (6, 6)
+    gridlim = (0.9,0.9)
+    radius = 0.075
+    nvertices = 64
+
+    background_color = (0., 0., 0., 1.0)
+    dot_color = (1., 1., 1., 1.)
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 16.
+    on_duration = 8.
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    #-------------------------------------------------------------------------
+    # gen = np.random.RandomState(0)
+    # fullpermutation = gen.permutation(np.prod(gridshape))
+    fullpermutation = np.array(
+        [31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,
+          5, 17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,
+          3,  0]
+    )
+    # ------------------------------------------------------------------------
+
+    # take the first 9 of the full 36 states
+    nstim = 9
+    permutation = fullpermutation[0*nstim:1*nstim]
+
+class slow_on_off_bright2(slow_on_off_bright1):
+    subclass = 'slow_on_off'
+    taskname = 'slow_on_off_bright2'
+    nstim = slow_on_off_bright1.nstim
+    fullpermutation = slow_on_off_bright1.fullpermutation
+    permutation = fullpermutation[1*nstim:2*nstim]
+
+class slow_on_off_bright3(slow_on_off_bright1):
+    subclass = 'slow_on_off'
+    taskname = 'slow_on_off_bright3'
+    nstim = slow_on_off_bright1.nstim
+    fullpermutation = slow_on_off_bright1.fullpermutation
+    permutation = fullpermutation[2*nstim:3*nstim]
+
+class slow_on_off_bright4(slow_on_off_bright1):
+    subclass = 'slow_on_off'
+    taskname = 'slow_on_off_bright4'
+    nstim = slow_on_off_bright1.nstim
+    fullpermutation = slow_on_off_bright1.fullpermutation
+    permutation = fullpermutation[3*nstim:4*nstim]
+
+class slow_on_off_dark1(slow_on_off_bright1):
+    taskname = 'slow_on_off_dark1'
+    dot_color = (-1., -1., -1., 1.)
+    background_color = (1., 1., 1., 1.)
+
+class slow_on_off_dark2(slow_on_off_bright2):
+    taskname = 'slow_on_off_dark2'
+    dot_color = (-1., -1., -1., 1.)
+    background_color = (1., 1., 1., 1.)
+
+class slow_on_off_dark3(slow_on_off_bright3):
+    taskname = 'slow_on_off_dark3'
+    dot_color = (-1., -1., -1., 1.)
+    background_color = (1., 1., 1., 1.)
+
+class slow_on_off_dark4(slow_on_off_bright4):
+    taskname = 'slow_on_off_dark4'
+    dot_color = (-1., -1., -1., 1.)
+    background_color = (1., 1., 1., 1.)
