@@ -371,6 +371,31 @@ class weber_dotflash5(weber_dotflash1):
     nstim = 25
     permutation = weber_dotflash1.fullpermutation[(4*nstim):(5*nstim)]
 
+class inverted_weber_dotflash1(weber_dotflash1):
+    taskname = 'inverted_weber_dotflash1'
+    luminance_range = (0, -1)
+    background_color = (1, 1, 1, 1)
+
+class inverted_weber_dotflash2(weber_dotflash2):
+    taskname = 'inverted_weber_dotflash2'
+    luminance_range = (0, -1)
+    background_color = (1, 1, 1, 1)
+
+class inverted_weber_dotflash3(weber_dotflash3):
+    taskname = 'inverted_weber_dotflash3'
+    luminance_range = (0, -1)
+    background_color = (1, 1, 1, 1)
+
+class inverted_weber_dotflash4(weber_dotflash4):
+    taskname = 'inverted_weber_dotflash4'
+    luminance_range = (0, -1)
+    background_color = (1, 1, 1, 1)
+
+class inverted_weber_dotflash5(weber_dotflash5):
+    taskname = 'inverted_weber_dotflash5'
+    luminance_range = (0, -1)
+    background_color = (1, 1, 1, 1)
+
 # class widescreen_dotflash3(widescreen_dotflash1):
 #   taskname = 'widescreen_dotflash3'
 #   fullpermutation = widescreen_dotflash1.fullpermutation

@@ -759,8 +759,11 @@ class WeberDotFlash(DotFlash):
         y_vals = np.linspace(-1, 1, ny) * self.gridlim[1]
 
         nl = self.n_luminances
-        lmin, lmax = self.luminance_range
-        l_vals = np.linspace(lmin, lmax, nl) ** self.dot_gamma
+
+        # necessary in order to get negative luminance increments to work
+        sign = np.sign(self.luminance_range).min()
+        lmin, lmax = np.abs(self.luminance_range)
+        l_vals = (np.linspace(lmin, lmax, nl) ** self.dot_gamma) * sign
 
         x, y, l = np.meshgrid(x_vals, y_vals, l_vals)
         self.xpos = x.flat[self.permutation]

@@ -204,7 +204,7 @@ class StimCanvas(GLCanvas):
         # the circle
         radius = 0.5
         gl.glBegin(gl.GL_LINE_LOOP)
-        for angle in np.linspace(0, 2 * np.pi, 64):
+        for angle in np.linspace(0, 2 * np.pi, 64, endpoint=False):
             gl.glVertex2f(np.sin(angle) * radius, np.cos(angle) * radius)
         gl.glEnd()
 
