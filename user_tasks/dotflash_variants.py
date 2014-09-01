@@ -98,12 +98,12 @@ for ii in xrange(20):
     locals().update(
         {taskname1:type(taskname1, (dotflash1_2hz,),
         {'fullpermutation':fullpermutation, 'permutation':permutation1,
-         'taskname':taskname1, 'subclass':'dots_permutations'})}
+         'taskname':taskname1})}
     )
     locals().update(
         {taskname2:type(taskname2, (dotflash1_2hz,),
         {'fullpermutation':fullpermutation, 'permutation':permutation2,
-        'taskname':taskname2, 'subclass':'dots_permutations'})}
+        'taskname':taskname2})}
     )
 
 class inverted_dotflash1(dotflash1):
@@ -111,7 +111,7 @@ class inverted_dotflash1(dotflash1):
     background_color = (1.,1.,1.,1.)
     dot_color = (0.,0.,0.,1.)
 
-class  inverted_dotflash2(dotflash2):
+class inverted_dotflash2(dotflash2):
     taskname = 'inverted_dotflash2'
     background_color = (1.,1.,1.,1.)
     dot_color = (0.,0.,0.,1.)

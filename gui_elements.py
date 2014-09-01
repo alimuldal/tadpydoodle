@@ -107,7 +107,7 @@ class PlaylistPanel(wx.Panel):
         # a tree menu of available tasks
         self.task_tree = wx.TreeCtrl(
             self, -1,
-            style=wx.TR_DEFAULT_STYLE | wx.TR_MULTIPLE | wx.TR_HIDE_ROOT
+            style=wx.TR_DEFAULT_STYLE | wx.TR_MULTIPLE | wx.TR_HIDE_ROOT,
         )
         self.populate_tree()
         self.task_tree.Bind(wx.EVT_TREE_SEL_CHANGING, self.onSelectChange)

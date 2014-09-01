@@ -80,12 +80,12 @@ for ii in xrange(20):
     locals().update(
         {taskname1:type(taskname1, (bars_2hz_1,),
         {'fullpermutation':fullpermutation, 'permutation':permutation1,
-         'taskname':taskname1, 'subclass':'bars_permutations'})}
+         'taskname':taskname1})}
     )
     locals().update(
         {taskname2:type(taskname2, (bars_2hz_1,),
         {'fullpermutation':fullpermutation, 'permutation':permutation2,
-        'taskname':taskname2, 'subclass':'bars_permutations'})}
+        'taskname':taskname2})}
     )
 
 class inverted_bars_2hz_1(bars_2hz_1):
