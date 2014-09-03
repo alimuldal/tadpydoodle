@@ -107,6 +107,7 @@ class PlaylistPanel(wx.Panel):
         # a tree menu of available tasks
         self.task_tree = wx.TreeCtrl(
             self, -1,
+            size=(200, 100),
             style=wx.TR_DEFAULT_STYLE | wx.TR_MULTIPLE | wx.TR_HIDE_ROOT,
         )
         self.populate_tree()
@@ -155,7 +156,7 @@ class PlaylistPanel(wx.Panel):
 
         # a checklistctrl that contains the playlist
         self.playlist = CheckListCtrl(
-            self, -1, style=wx.LC_SINGLE_SEL | wx.LC_REPORT)
+            self, -1, size=(200, 50), style=wx.LC_SINGLE_SEL | wx.LC_REPORT)
         self.playlist.InsertColumn(0, '')
         self.playlist.InsertColumn(1, 'Name')
         self.playlist.InsertColumn(2, 'Subclass')
