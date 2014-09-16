@@ -112,6 +112,10 @@ for ii in xrange(20):
                          'taskname': taskname})}
     )
 
+# repeated bars moving caudal --> rostral
+class repeat_0(bars_2hz_1):
+    taskname = 'repeat_0'
+    fullpermutation = permutation = np.zeros(18, dtype=np.int)
 
 class inverted_bars_2hz_1(bars_2hz_1):
     taskname = 'inverted_bars_2hz_1'
