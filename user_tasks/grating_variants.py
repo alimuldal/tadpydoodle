@@ -16,7 +16,8 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from base_tasks.task_classes import DriftingSinusoid, DriftingSquarewave
+from base_tasks.task_classes import (DriftingSinusoid, DriftingSquarewave,
+                                     MultiSpeedSquarewave)
 
 ################################################################################
 # grating-derived stimulus classes
@@ -34,7 +35,7 @@ class gratings1(DriftingSinusoid):
     grating_amplitude = 1.      # amplitude of luminance change (1 == max)
     grating_nsamples = 1000     # number of samples in grating
     n_cycles = 5.               # number of full cycles in texture
-    grating_speed = 0.5         # phase change/frame
+    grating_speed = 45.         # phase change/frame
 
     # stimulus timing
     initblanktime = 2.
@@ -49,8 +50,8 @@ class gratings1(DriftingSinusoid):
     #-----------------------------------------------------------------------
     # 36-long permutation when seed == 0, as in original bars1.py
     fullpermutation = np.array([
-    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5, 
-    17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0 
+    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5,
+    17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0
     ])
     #-----------------------------------------------------------------------
 
@@ -96,9 +97,9 @@ class squarewave1(DriftingSquarewave):
     grating_amplitude = 1.      # amplitude of luminance change (1 == max)
     grating_offset = 0
     grating_nsamples = 1000     # number of samples in grating
-    n_cycles = 5.           # number of full cycles in texture
-    grating_speed = 0.5         # phase change/frame
-    duty_cycle = 0.5        # proporiton of time in the on phase
+    n_cycles = 5.               # number of full cycles in texture
+    grating_speed = 45.         # deg / sec
+    duty_cycle = 0.5            # proporiton of time in the on phase
 
     # stimulus timing
     initblanktime = 2.
@@ -113,8 +114,8 @@ class squarewave1(DriftingSquarewave):
     #-----------------------------------------------------------------------
     # 36-long permutation when seed == 0, as in original bars1.py
     fullpermutation = np.array([
-    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5, 
-    17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0 
+    31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,  5,
+    17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,  3,  0
     ])
     #-----------------------------------------------------------------------
 
@@ -149,6 +150,72 @@ class squarewave_nointerval_2hz_2(squarewave_nointerval2):
     taskname = 'squarewave_nointerval_2hz_2'
     scan_hz = 2.
 
+class squarewave_3speed_1(MultiSpeedSquarewave):
+
+    taskname = 'squarewave_3speed_1'
+
+    # stimulus-specific parameters
+    aperture_radius = 1.
+    aperture_nvertices = 256
+    grating_color = (1.,1.,1.,1.)
+    grating_amplitude = 1.      # amplitude of luminance change (1 == max)
+    grating_offset = 0
+    grating_nsamples = 1000     # number of samples in grating
+    n_cycles = 5                # number of full cycles in texture
+    duty_cycle = 0.5            # proporiton of time in the on phase
+    grating_speeds = np.array([20., 35., 90.])  # deg / sec
+
+    n_orientations = 8
+    on_duration = 2
+    interval = 10
+    initblanktime = 2
+    finalblanktime = 10
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    #-----------------------------------------------------------------------
+    # 24-long permutation when seed == 0
+    fullpermutation = np.array([11, 10, 22, 14, 20,  1, 13, 23, 16,  8,  6, 17,
+                                 4,  2,  5, 18,  9, 7, 19,  3,  0, 21, 15, 12])
+    #-----------------------------------------------------------------------
+
+    nstim = 12
+    permutation = fullpermutation[:nstim]
+
+class squarewave_3speed_2(squarewave_3speed_1):
+
+    taskname = 'squarewave_3speed_2'
+    nstim = squarewave_3speed_1.nstim
+    permutation = squarewave_3speed_1.fullpermutation[nstim:]
+
+# dynamically generate 20 random permutations of the multi-speed drifting
+# squarewave gratings
+for ii in xrange(20):
+
+    random_state = np.random.RandomState(ii)
+    fullpermutation = random_state.permutation(24)
+    permutation1 = fullpermutation[:12]
+    permutation2 = fullpermutation[12:]
+
+    taskname1 = 'squarewave_3speed_%02i_1' % (ii + 1)
+    taskname2 = 'squarewave_3speed_%02i_2' % (ii + 1)
+
+    locals().update(
+        {taskname1: type(taskname1, (squarewave_3speed_1,),
+                         {'fullpermutation': fullpermutation,
+                          'permutation': permutation1,
+                          'taskname': taskname1})}
+    )
+    locals().update(
+        {taskname2: type(taskname2, (squarewave_3speed_1,),
+                         {'fullpermutation': fullpermutation,
+                          'permutation': permutation2,
+                          'taskname': taskname2})}
+    )
+
+
 ################################################################################
 # tests
 
@@ -170,6 +237,35 @@ class orientation_test(squarewave1):
     def _drawstim(self):
         self._olddraw()
         print "%f deg" %self.orientation[self.currentstim]
+
+class speed_test(MultiSpeedSquarewave):
+
+    taskname = 'grating_speed_test'
+    subclass = 'test_stimuli'
+
+    # stimulus-specific parameters
+    aperture_radius = 1.
+    aperture_nvertices = 256
+    grating_color = (1.,1.,1.,1.)
+    grating_amplitude = 1.      # amplitude of luminance change (1 == max)
+    grating_offset = 0
+    grating_nsamples = 1000     # number of samples in grating
+    n_cycles = 5.               # number of full cycles in texture
+    duty_cycle = 0.5            # proporiton of time in the on phase
+    grating_speeds = np.array([20., 35., 90.])  # deg / sec
+
+    nstim = 24
+    n_orientations = 8
+    on_duration = 1
+    interval = 1
+    initblanktime = 0
+    finalblanktime = 0
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    permutation = np.random.RandomState(0).permutation(24)
 
 class grating_blending_demo(gratings_nointerval1):
 

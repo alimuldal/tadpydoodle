@@ -473,6 +473,9 @@ class TextureQuad1D(object):
         display_list = gl.glGenLists(1)
         gl.glNewList(display_list, gl.GL_COMPILE)
 
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        gl.glPushMatrix()
+
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFuncSeparate(gl.GL_SRC_ALPHA, gl.GL_ONE,
                                gl.GL_ONE, gl.GL_ZERO)
@@ -494,6 +497,8 @@ class TextureQuad1D(object):
         gl.glDisable(gl.GL_TEXTURE_1D)
         gl.glDisable(gl.GL_BLEND)
 
+        gl.glPopMatrix()
+
         gl.glEndList()
         # --------------------------------------------------------------
 
@@ -513,8 +518,10 @@ class TextureQuad1D(object):
         gl.glBindTexture(gl.GL_TEXTURE_1D, self.texture)
 
         # we move in the opposite direction in texture coords
-        gl.glTranslate(-offset, 0, 0)
+        gl.glTranslatef(-offset, 0, 0)
         gl.glRotatef(-angle, 0, 0, 1)
+
+        # draw the texture
         gl.glColor4f(*color)
         gl.glCallList(self.display_list)
 
@@ -549,8 +556,8 @@ class Task(object):
     def __init__(self, canvas=None):
         self._canvas = canvas
         self.starttime = -1
-        self._buildtimes()
         self._buildstim()
+        self._buildtimes()
         self._buildparamsdict()
         pass
 
@@ -975,6 +982,52 @@ class DriftingBar(Task):
 
         pass
 
+class MultiSpeedBars(DriftingBar):
+    """
+    Drifting bar with multiple speeds/orientations
+
+    needs:
+        self.bar_speeds (deg/sec)
+        self.n_orientations
+
+    """
+
+    subclass = 'multi_speed_bars'
+
+    def _make_orientations(self):
+
+        # might want to dynamically generate speeds...
+        self.n_speeds = len(self.bar_speeds)
+
+        # assuming that speeds are in deg/s, 90x90 deg stimulus area
+        unique_durations = 90. / self.bar_speeds
+
+        unique_orientations = np.linspace(0, 360, self.n_orientations,
+                                          endpoint=False)
+
+        ori, dur = np.meshgrid(unique_orientations, unique_durations)
+
+        self.orientation = ori.flat[self.permutation]
+        self.on_duration = dur.flat[self.permutation]
+
+        pass
+
+    def _buildstim(self):
+
+        self._make_orientations()
+
+        self._bar = Bar(width=self.bar_width,
+                        height=self.bar_height
+                        )
+
+        self._aperture = CircularStencil(radius=self.aperture_radius,
+                                         nvertices=self.aperture_nvertices,
+                                         polarity=1)
+
+        pass
+
+    pass
+
 
 class OccludedDriftingBar(DriftingBar):
 
@@ -1086,7 +1139,7 @@ class DriftingGrating(Task):
 
         # update the current phase angle
         on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
-        self._phase = on_dt * self.grating_speed
+        self._phase = on_dt * (self.grating_speed / 90.)
 
         # enable stencil test, draw the aperture to the stencil buffer
         gl.glEnable(gl.GL_STENCIL_TEST)
@@ -1147,10 +1200,53 @@ class DriftingSquarewave(DriftingGrating):
         squarewave = np.float32(rectwave(t, period, self.duty_cycle)) - 0.5
         squarewave *= self.grating_amplitude        # scaling
         squarewave += 0.5 + self.grating_offset     # offset origin
+        # squarewave = np.zeros(self.grating_nsamples)
+        # squarewave[:10] = 1
 
         self._texdata = squarewave
         self._phase = 0
 
+class MultiSpeedSquarewave(DriftingSquarewave):
+
+    subclass = 'multi_speed_squarewave'
+
+    def _make_orientations(self):
+
+        # might want to dynamically generate speeds...
+        self.n_speeds = len(self.grating_speeds)
+
+        # assuming that speeds are in deg/s, 90x90 deg stimulus area
+        unique_speeds = self.grating_speeds
+
+        unique_orientations = np.linspace(0, 360, self.n_orientations,
+                                          endpoint=False)
+
+        ori, speed = np.meshgrid(unique_orientations, unique_speeds)
+
+        self.orientation = ori.flat[self.permutation]
+        self.speed = speed.flat[self.permutation]
+
+        pass
+
+    def _drawstim(self):
+
+        # update the current phase angle
+        on_dt = self.dt - (self.initblanktime + self.ontimes[self.currentstim])
+        self._phase = on_dt * (self.speed[self.currentstim] / 90.)
+
+        # enable stencil test, draw the aperture to the stencil buffer
+        gl.glEnable(gl.GL_STENCIL_TEST)
+        self._aperture.draw()
+
+        # draw the texture, disable stencil test
+        self._texture.draw(offset=self._phase,
+                           # correction for unit circle
+                           angle=self.orientation[self.currentstim],
+                           color=self.grating_color
+                           )
+        gl.glDisable(gl.GL_STENCIL_TEST)
+
+    pass
 
 class FlashingTexture(Task):
     """

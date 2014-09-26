@@ -16,7 +16,8 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from base_tasks.task_classes import DriftingBar, OccludedDriftingBar
+from base_tasks.task_classes import (DriftingBar, OccludedDriftingBar,
+                                     MultiSpeedBars)
 
 ##########################################################################
 # drifting bar-derived stimulus classes
@@ -112,10 +113,73 @@ for ii in xrange(20):
                          'taskname': taskname})}
     )
 
+class bars_3speed_1(MultiSpeedBars):
+
+    taskname = 'bars_3speed_1'
+
+    # stimulus-specific parameters
+    aperture_radius = 1.
+    aperture_nvertices = 256
+    bar_color = (1., 1., 1., 1.)
+    bar_height = 2.
+    bar_width = 0.2
+
+    # in degrees/s
+    bar_speeds = np.array([20, 35, 90])
+    n_orientations = 8
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 13.
+    interval = 13.
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    #-----------------------------------------------------------------------
+    # 24-long permutation when seed == 0
+    fullpermutation = np.array([11, 10, 22, 14, 20,  1, 13, 23, 16,  8,  6, 17,
+                                 4,  2,  5, 18,  9, 7, 19,  3,  0, 21, 15, 12])
+    #-----------------------------------------------------------------------
+
+    nstim = 12
+    permutation = fullpermutation[:nstim]
+
+class bars_3speed_2(bars_3speed_1):
+
+    taskname = 'bars_3speed_2'
+    permutation = bars_3speed_1.fullpermutation[bars_3speed_1.nstim:]
+
+# dynamically generate 20 random permutations of the multi-speed drifting bars
+for ii in xrange(20):
+
+    random_state = np.random.RandomState(ii)
+    fullpermutation = random_state.permutation(24)
+    permutation1 = fullpermutation[:12]
+    permutation2 = fullpermutation[12:]
+
+    taskname1 = 'bars_3speed_%02i_1' % (ii + 1)
+    taskname2 = 'bars_3speed_%02i_2' % (ii + 1)
+
+    locals().update(
+        {taskname1: type(taskname1, (bars_3speed_1,),
+                         {'fullpermutation': fullpermutation,
+                          'permutation': permutation1,
+                          'taskname': taskname1})}
+    )
+    locals().update(
+        {taskname2: type(taskname2, (bars_3speed_1,),
+                         {'fullpermutation': fullpermutation,
+                          'permutation': permutation2,
+                          'taskname': taskname2})}
+    )
+
 # repeated bars moving caudal --> rostral
 class repeat_0(bars_2hz_1):
     taskname = 'repeat_0'
     fullpermutation = permutation = np.zeros(18, dtype=np.int)
+
 
 class inverted_bars_2hz_1(bars_2hz_1):
     taskname = 'inverted_bars_2hz_1'
@@ -222,3 +286,38 @@ class orientation_test(bars1):
     def _drawstim(self):
         self._olddraw()
         print "%f deg" % self.orientation[self.currentstim]
+
+
+class speed_test(MultiSpeedBars):
+
+    taskname = 'bars_speed_test'
+    subclass = 'test_stimuli'
+
+    # stimulus-specific parameters
+    aperture_radius = 1.
+    aperture_nvertices = 256
+    bar_color = (1., 1., 1., 1.)
+    bar_height = 2.
+    bar_width = 0.2
+
+    # in degrees/s
+    bar_speeds = np.array([20, 35, 90])
+    n_orientations = 8
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 13
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    #-----------------------------------------------------------------------
+    # 24-long permutation when seed == 0
+    fullpermutation = np.array([11, 10, 22, 14, 20,  1, 13, 23, 16,  8,  6, 17,
+                                 4,  2,  5, 18,  9, 7, 19,  3,  0, 21, 15, 12])
+    #-----------------------------------------------------------------------
+
+    nstim = 24
+    permutation = fullpermutation
