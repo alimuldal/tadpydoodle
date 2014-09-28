@@ -1000,15 +1000,17 @@ class MultiSpeedBars(DriftingBar):
         self.n_speeds = len(self.bar_speeds)
 
         # assuming that speeds are in deg/s, 90x90 deg stimulus area
-        unique_durations = 90. / self.bar_speeds
+        unique_speeds = self.bar_speeds
 
         unique_orientations = np.linspace(0, 360, self.n_orientations,
                                           endpoint=False)
 
-        ori, dur = np.meshgrid(unique_orientations, unique_durations)
+        ori, speed = np.meshgrid(unique_orientations, unique_speeds)
 
         self.orientation = ori.flat[self.permutation]
-        self.on_duration = dur.flat[self.permutation]
+        self.speed = speed.flat[self.permutation]
+
+        self.on_duration = 90. / self.speed
 
         pass
 
