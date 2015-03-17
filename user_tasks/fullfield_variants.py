@@ -71,6 +71,42 @@ for ii in xrange(20):
         {'seed':ii, 'taskname':taskname})}
     )
 
+# max contrast flashes (Xu et al 2011)
+
+class max_contrast_flash(FullFieldFlash):
+
+    taskname = 'max_contrast_flash'
+
+    # stimulus-specific parameters
+    fullfield_rgb = (1, 1, 1)
+    background_color = (0, 0, 0, 1.)
+    flash_hz = 1E-6
+    gamma = 1.8
+    nstim = 18
+    luminance_values = np.ones(nstim) ** gamma
+    flash_amplitude = luminance_values
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 8.
+    on_duration = 1.
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+
+class half_max_contrast_flash(max_contrast_flash):
+
+    taskname = 'half_max_contrast_flash'
+
+    # stimulus-specific parameters
+    luminance_values = (0.5 * np.ones(max_contrast_flash.nstim)
+                                        ) ** max_contrast_flash.gamma
+    flash_amplitude = luminance_values
+
+
 ###############################################################################
 # tests
 
