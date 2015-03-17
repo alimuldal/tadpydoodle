@@ -30,17 +30,26 @@ import OpenGL.GL.framebufferobjects as fbo
 from OpenGL.GL import shaders
 
 from OpenGL import GLX as glx
-# from OpenGL.extensions import alternate
-# glXSwapInterval = alternate('glXSwapInterval', glx.glXSwapIntervalSGI,
-#   glx.glXSwapIntervalMESA, lambda x: None)
-if glx.glXSwapIntervalSGI:
-    glXSwapInterval = glx.glXSwapIntervalSGI
-elif glx.glXSwapIntervalMESA:
-    glXSwapInterval = glx.glXSwapIntervalMESA
-else:
+
+# new home of glXSwapInterval (PyOpenGL v3.1.0)
+from OpenGL.GLX.EXT.swap_control import glXSwapIntervalEXT as glXSwapInterval
+
+if not glXSwapInterval:
     import warnings
     warnings.warn('glXSwapInterval is not implemented')
-    glXSwapInterval = lambda x: None
+    glXSwapInterval = lambda disp, drawable, interval: None
+
+# # from OpenGL.extensions import alternate
+# # glXSwapInterval = alternate('glXSwapInterval', glx.glXSwapIntervalSGI,
+# #   glx.glXSwapIntervalMESA, lambda x: None)
+# if glx.glXSwapIntervalSGI:
+#     glXSwapInterval = glx.glXSwapIntervalSGI
+# elif glx.glXSwapIntervalMESA:
+#     glXSwapInterval = glx.glXSwapIntervalMESA
+# else:
+#     import warnings
+#     warnings.warn('glXSwapInterval is not implemented')
+#     glXSwapInterval = lambda x: None
 
 import wx
 from wx.glcanvas import GLCanvas, GLCanvasWithContext
@@ -295,7 +304,8 @@ class StimCanvas(GLCanvas):
         shaders.glUseProgram(0)
 
         # wait for next vblank before swapping buffers
-        glXSwapInterval(1)
+        glXSwapInterval(glx.glXGetCurrentDisplay(),
+                        glx.glXGetCurrentDrawable(), 1)
 
         gl.glEndList()
 
@@ -336,7 +346,7 @@ class StimCanvas(GLCanvas):
             gl.GL_TEXTURE_2D,       # target
             0,                      # mipmap level
             # gl.GL_RGB,              # internal format
-            gl.GL_RGB_SNORM,        # internal format (signed!)
+            gl.GL_RGB16_SNORM,      # internal format (signed!)
             xres,                   # width
             yres,                   # height
             0,                      # border
@@ -854,7 +864,8 @@ class PreviewCanvas(GLCanvas):
         gl.glEnable(gl.GL_SCISSOR_TEST)
 
         # don't wait for next vblank before swapping buffers
-        glXSwapInterval(0)
+        glXSwapInterval(glx.glXGetCurrentDisplay(),
+                        glx.glXGetCurrentDrawable(), 0)
 
         gl.glEndList()
         # --------------------------------------------------------------
