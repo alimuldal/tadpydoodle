@@ -175,7 +175,7 @@ class Dot(object):
         draw(self,x,y,z)
     """
 
-    def __init__(self, radius, nvertices):
+    def __init__(self, nvertices):
         """ Create the display list """
         self.display_list = gl.glGenLists(1)
         gl.glNewList(self.display_list, gl.GL_COMPILE)
@@ -186,17 +186,18 @@ class Dot(object):
 
         gl.glBegin(gl.GL_POLYGON)
         for angle in np.linspace(0., 2 * np.pi, nvertices, endpoint=False):
-            gl.glVertex2f(np.sin(angle) * radius, np.cos(angle) * radius)
+            gl.glVertex2f(np.sin(angle), np.cos(angle))
         gl.glEnd()
 
         gl.glDisable(gl.GL_BLEND)
         gl.glEndList()
 
-    def draw(self, x=0., y=0., z=0., color=(1., 1., 1., 1.)):
+    def draw(self, x=0., y=0., z=0., r=1., color=(1., 1., 1., 1.)):
         """ Locally translate and draw the dot """
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glPushMatrix()
         gl.glTranslate(x, y, z)
+        gl.glScalef(r, r, 1.)
         gl.glColor4f(*color)
         gl.glCallList(self.display_list)
         gl.glPopMatrix()
@@ -212,7 +213,6 @@ class CircularStencil(object):
     N.B. GL_STENCIL_TEST must be enabled in order for it to do anything!
 
     Parameters:
-        radius
         nvertices
         polarity
 
@@ -220,7 +220,7 @@ class CircularStencil(object):
         draw(self,x=0.,y=0.,z=0.)
     """
 
-    def __init__(self, radius=1, nvertices=256, polarity=1):
+    def __init__(self, nvertices=256, polarity=1):
 
         self.display_list = gl.glGenLists(1)
         gl.glNewList(self.display_list, gl.GL_COMPILE)
@@ -236,7 +236,7 @@ class CircularStencil(object):
 
         gl.glBegin(gl.GL_POLYGON)
         for angle in np.linspace(0., 2 * np.pi, nvertices, endpoint=False):
-            gl.glVertex2f(np.sin(angle) * radius, np.cos(angle) * radius)
+            gl.glVertex2f(np.sin(angle), np.cos(angle))
         gl.glEnd()
 
         # re-enable writing to RGBA values
@@ -249,10 +249,11 @@ class CircularStencil(object):
 
         gl.glEndList()
 
-    def draw(self, x=0, y=0, z=0):
+    def draw(self, x=0, y=0, z=0, r=1.):
         gl.glMatrixMode(gl.GL_MODELVIEW)
         gl.glPushMatrix()
         gl.glTranslate(x, y, z)
+        gl.glScalef(r, r, 1.)
         gl.glCallList(self.display_list)
         gl.glPopMatrix()
 
@@ -731,7 +732,7 @@ class DotFlash(Task):
         self._make_positions()
 
         # create the dot
-        self._dot = Dot(self.radius, self.nvertices)
+        self._dot = Dot(self.nvertices)
         pass
 
     def _drawstim(self):
@@ -739,6 +740,7 @@ class DotFlash(Task):
         self._dot.draw(self.xpos[self.currentstim],
                        self.ypos[self.currentstim],
                        0.,
+                       self.radius,
                        self.dot_color
                        )
 
@@ -786,6 +788,7 @@ class WeberDotFlash(DotFlash):
         self._dot.draw(self.xpos[self.currentstim],
                        self.ypos[self.currentstim],
                        0.,
+                       self.radius,
                        self.dot_color[self.currentstim]
                        )
 
@@ -827,8 +830,52 @@ class OnOffDotFlash(DotFlash):
         self._dot.draw(self.xpos[self.currentstim],
                        self.ypos[self.currentstim],
                        0.,
+                       self.radius,
                        self.dot_color[self.currentstim]
                        )
+
+class MultiSizeDotFlash(DotFlash):
+    """
+    Dots with multiple different radii
+
+    Implements:
+        _make_positions
+        _drawstim
+    """
+
+    subclass = 'multi_size_dot_flash'
+
+    def _make_positions(self):
+
+        assert len(self.permutation) == self.nstim
+
+        r = self.radii
+
+        # dynamically define the grid limits based on the dot radii
+        self.gridlim = (1. - r.max(),) * 2
+
+        # generate a random permutation of x,y coordinates and
+        # radii
+        nx, ny = self.gridshape
+        x_vals = np.linspace(-1, 1, nx) * self.gridlim[0] * self.area_aspect
+        y_vals = np.linspace(-1, 1, ny) * self.gridlim[1]
+
+
+        x, y, r = np.meshgrid(x_vals, y_vals, r)
+        self.xpos = x.flat[self.permutation]
+        self.ypos = y.flat[self.permutation]
+        self.radius = r.flat[self.permutation]
+
+    def _drawstim(self):
+        # draw the dot in the current position
+        self._dot.draw(self.xpos[self.currentstim],
+                       self.ypos[self.currentstim],
+                       0.,
+                       self.radius[self.currentstim],
+                       self.dot_color
+                       )
+
+
 
 class FullFieldFlash(Task):
     """
@@ -954,8 +1001,7 @@ class DriftingBar(Task):
                         height=self.bar_height
                         )
 
-        self._aperture = CircularStencil(radius=self.aperture_radius,
-                                         nvertices=self.aperture_nvertices,
+        self._aperture = CircularStencil(nvertices=self.aperture_nvertices,
                                          polarity=1)
 
     def _drawstim(self):
@@ -971,7 +1017,7 @@ class DriftingBar(Task):
 
         # enable stencil test, draw the aperture to the stencil buffer
         gl.glEnable(gl.GL_STENCIL_TEST)
-        self._aperture.draw()
+        self._aperture.draw(r=self.aperture_radius)
 
         # draw the bar (ROTATED 90o!), disable stencil test
         self._bar.draw(x, y, 0,
@@ -1022,8 +1068,7 @@ class MultiSpeedBars(DriftingBar):
                         height=self.bar_height
                         )
 
-        self._aperture = CircularStencil(radius=self.aperture_radius,
-                                         nvertices=self.aperture_nvertices,
+        self._aperture = CircularStencil(nvertices=self.aperture_nvertices,
                                          polarity=1)
 
         pass
@@ -1131,8 +1176,7 @@ class DriftingGrating(Task):
         self._texture = TextureQuad1D(texdata=self._texdata,
                                       rect=(-1, -1, 1, 1))
 
-        self._aperture = CircularStencil(radius=self.aperture_radius,
-                                         nvertices=self.aperture_nvertices,
+        self._aperture = CircularStencil(nvertices=self.aperture_nvertices,
                                          polarity=1)
 
         pass
@@ -1145,7 +1189,7 @@ class DriftingGrating(Task):
 
         # enable stencil test, draw the aperture to the stencil buffer
         gl.glEnable(gl.GL_STENCIL_TEST)
-        self._aperture.draw()
+        self._aperture.draw(r=self.aperture_radius)
 
         # draw the texture, disable stencil test
         self._texture.draw(offset=self._phase,
@@ -1238,7 +1282,7 @@ class MultiSpeedSquarewave(DriftingSquarewave):
 
         # enable stencil test, draw the aperture to the stencil buffer
         gl.glEnable(gl.GL_STENCIL_TEST)
-        self._aperture.draw()
+        self._aperture.draw(r=self.aperture_radius)
 
         # draw the texture, disable stencil test
         self._texture.draw(offset=self._phase,
