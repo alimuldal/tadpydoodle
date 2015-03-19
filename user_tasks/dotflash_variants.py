@@ -16,7 +16,8 @@ along with Tadpydoodle.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from base_tasks.task_classes import DotFlash,WeberDotFlash, OnOffDotFlash
+from base_tasks.task_classes import (DotFlash, WeberDotFlash, OnOffDotFlash,
+                                     MultiSizeDotFlash)
 
 ################################################################################
 # dotflash-derived stimulus classes
@@ -105,6 +106,48 @@ for ii in xrange(20):
         {'fullpermutation':fullpermutation, 'permutation':permutation2,
         'taskname':taskname2})}
     )
+
+
+class _multi_size_dotflash(MultiSizeDotFlash):
+
+    # stimulus-specific parameters
+    radii = np.r_[0.0375, 0.075, 0.15]
+    gridshape = (6, 6)
+    # gridlim determined dynamically based on radii
+    dot_color = (1., 1., 1., 1.)
+    nvertices = 64
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 8.
+    on_duration = 1.
+
+    # photodiode triggering parameters
+    scan_hz = 2.
+    photodiodeontime = 0.075
+
+    # take the first 18 of the full 108 positions / radii
+    nstim = 18
+
+
+# dynamically generate 20 random permutations
+for ii in xrange(20):
+
+    random_state = np.random.RandomState(ii)
+    fullpermutation = random_state.permutation(6 * 6 * 3)
+
+    # split into 6 x 18 stim movies
+    permutations = np.split(fullpermutation, 6)
+
+    for jj, perm in enumerate(permutations):
+        name = 'multi_size_dots_%02i_%i' % (ii + 1, jj + 1)
+        locals().update(
+            {name:type(name, (_multi_size_dotflash,),
+            {'fullpermutation':fullpermutation, 'permutation':perm,
+            'taskname':name})}
+        )
+
 
 class inverted_dotflash1(dotflash1):
     taskname = 'inverted_dotflash1'
@@ -710,3 +753,31 @@ class on_off_test(OnOffDotFlash):
     # take the first 18 of the full 72 states
     nstim = full_nstim
     permutation = fullpermutation[:nstim]
+
+
+class test_multi_size_dotflash(MultiSizeDotFlash):
+
+    taskname = 'test_multi_size_dotflash'
+
+    # stimulus-specific parameters
+    radii = np.r_[0.0375, 0.075, 0.15]
+    gridshape = (6, 6)
+    # gridlim determined dynamically based on radii
+    dot_color = (1., 1., 1., 1.)
+    nvertices = 64
+
+    # stimulus timing
+    initblanktime = 2.
+    finalblanktime = 10.
+    interval = 1
+    on_duration = 1.
+
+    # photodiode triggering parameters
+    scan_hz = 5.
+    photodiodeontime = 0.075
+
+    # take the first 18 of the full 36 positions
+    nstim = 6 * 6 * 3
+
+    gen = np.random.RandomState(0)
+    permutation = gen.permutation(nstim)

@@ -852,7 +852,7 @@ class MultiSizeDotFlash(DotFlash):
         r = self.radii
 
         # dynamically define the grid limits based on the dot radii
-        self.gridlim = (1. - r.max(),) * 2
+        self.gridlim = (self.area_aspect - r.max(), 1. - r.max())
 
         # generate a random permutation of x,y coordinates and
         # radii
