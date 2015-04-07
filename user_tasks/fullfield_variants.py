@@ -107,6 +107,14 @@ class half_max_contrast_flash(max_contrast_flash):
     flash_amplitude = luminance_values
 
 
+class max_contrast_extra_blanktime(max_contrast_flash):
+
+    taskname = 'max_contrast_extra_blanktime'
+
+    initblanktime = 10
+    finalblanktime = 20
+
+
 ###############################################################################
 # tests
 
