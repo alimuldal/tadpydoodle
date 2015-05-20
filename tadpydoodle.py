@@ -68,7 +68,7 @@ class AppThread(multiprocessing.Process):
     def run(self):
 
         print "Starting TadPyDoodle v%s" % __version__
-        app = wx.PySimpleApp()
+        app = wx.App()
 
         print "Loading configuration..."
         self.loadConfig()
