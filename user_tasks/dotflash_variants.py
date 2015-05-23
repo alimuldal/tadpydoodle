@@ -131,6 +131,11 @@ class _multi_size_dotflash(MultiSizeDotFlash):
     nstim = 18
 
 
+# class SlowOnOffDotFlash(DotFlash):
+
+#     subclass = 'slow_on_off_dots'
+
+
 # dynamically generate 20 random permutations
 for ii in xrange(20):
 
@@ -343,101 +348,101 @@ class position_test(widescreen_dotflash1):
         print "x = %.2f, y = %.2f" %(self.xpos[self.currentstim],self.ypos[self.currentstim])
 
 
-class weber_dotflash1(WeberDotFlash):
-    """
-    Flashing dots with pseudorandom positions and luminances.
-    """
+# class weber_dotflash1(WeberDotFlash):
+#     """
+#     Flashing dots with pseudorandom positions and luminances.
+#     """
 
-    taskname = 'weber_dotflash1'
+#     taskname = 'weber_dotflash1'
 
-    # stimulus-specific parameters
-    gridshape = (5,5)
-    gridlim = (0.9,0.9)
-    radius = 0.075
-    nvertices = 64
+#     # stimulus-specific parameters
+#     gridshape = (5,5)
+#     gridlim = (0.9,0.9)
+#     radius = 0.075
+#     nvertices = 64
 
-    n_luminances = 5
-    luminance_range = (0.,1.)
+#     n_luminances = 5
+#     luminance_range = (0.,1.)
 
-    dot_rgb = (1., 1., 1.)
+#     dot_rgb = (1., 1., 1.)
 
-    # approximate exponent for psychophysical contrast curve. this is used
-    # to select reasonably-spaced luminance values.
-    dot_gamma = 1.8
+#     # approximate exponent for psychophysical contrast curve. this is used
+#     # to select reasonably-spaced luminance values.
+#     dot_gamma = 1.8
 
-    # stimulus timing
-    initblanktime = 2.
-    finalblanktime = 10.
-    interval = 8
-    on_duration = 1.
+#     # stimulus timing
+#     initblanktime = 2.
+#     finalblanktime = 10.
+#     interval = 8
+#     on_duration = 1.
 
-    # photodiode triggering parameters
-    scan_hz = 2.
-    photodiodeontime = 0.075
+#     # photodiode triggering parameters
+#     scan_hz = 2.
+#     photodiodeontime = 0.075
 
-    full_nstim = np.prod(gridshape + (n_luminances,))
-    #-----------------------------------------------------------------------
-    gen = np.random.RandomState(0)
-    fullpermutation = gen.permutation(full_nstim)
+#     full_nstim = np.prod(gridshape + (n_luminances,))
+#     #-----------------------------------------------------------------------
+#     gen = np.random.RandomState(0)
+#     fullpermutation = gen.permutation(full_nstim)
 
-    #-----------------------------------------------------------------------
+#     #-----------------------------------------------------------------------
 
-    # take the first 25 of the full 125 states
-    nstim = 25
-    permutation = fullpermutation[(0*nstim):(1*nstim)]
+#     # take the first 25 of the full 125 states
+#     nstim = 25
+#     permutation = fullpermutation[(0*nstim):(1*nstim)]
 
-class weber_dotflash2(weber_dotflash1):
-    taskname = 'weber_dotflash2'
+# class weber_dotflash2(weber_dotflash1):
+#     taskname = 'weber_dotflash2'
 
-    # take the second 25 of the full 125 states
-    nstim = 25
-    permutation = weber_dotflash1.fullpermutation[(1*nstim):(2*nstim)]
+#     # take the second 25 of the full 125 states
+#     nstim = 25
+#     permutation = weber_dotflash1.fullpermutation[(1*nstim):(2*nstim)]
 
-class weber_dotflash3(weber_dotflash1):
-    taskname = 'weber_dotflash3'
+# class weber_dotflash3(weber_dotflash1):
+#     taskname = 'weber_dotflash3'
 
-    # take the second 25 of the full 125 states
-    nstim = 25
-    permutation = weber_dotflash1.fullpermutation[(2*nstim):(3*nstim)]
+#     # take the second 25 of the full 125 states
+#     nstim = 25
+#     permutation = weber_dotflash1.fullpermutation[(2*nstim):(3*nstim)]
 
-class weber_dotflash4(weber_dotflash1):
-    taskname = 'weber_dotflash4'
+# class weber_dotflash4(weber_dotflash1):
+#     taskname = 'weber_dotflash4'
 
-    # take the second 25 of the full 125 states
-    nstim = 25
-    permutation = weber_dotflash1.fullpermutation[(3*nstim):(4*nstim)]
+#     # take the second 25 of the full 125 states
+#     nstim = 25
+#     permutation = weber_dotflash1.fullpermutation[(3*nstim):(4*nstim)]
 
-class weber_dotflash5(weber_dotflash1):
-    taskname = 'weber_dotflash5'
+# class weber_dotflash5(weber_dotflash1):
+#     taskname = 'weber_dotflash5'
 
-    # take the second 25 of the full 125 states
-    nstim = 25
-    permutation = weber_dotflash1.fullpermutation[(4*nstim):(5*nstim)]
+#     # take the second 25 of the full 125 states
+#     nstim = 25
+#     permutation = weber_dotflash1.fullpermutation[(4*nstim):(5*nstim)]
 
-class inverted_weber_dotflash1(weber_dotflash1):
-    taskname = 'inverted_weber_dotflash1'
-    luminance_range = (0, -1)
-    background_color = (1, 1, 1, 1)
+# class inverted_weber_dotflash1(weber_dotflash1):
+#     taskname = 'inverted_weber_dotflash1'
+#     luminance_range = (0, -1)
+#     background_color = (1, 1, 1, 1)
 
-class inverted_weber_dotflash2(weber_dotflash2):
-    taskname = 'inverted_weber_dotflash2'
-    luminance_range = (0, -1)
-    background_color = (1, 1, 1, 1)
+# class inverted_weber_dotflash2(weber_dotflash2):
+#     taskname = 'inverted_weber_dotflash2'
+#     luminance_range = (0, -1)
+#     background_color = (1, 1, 1, 1)
 
-class inverted_weber_dotflash3(weber_dotflash3):
-    taskname = 'inverted_weber_dotflash3'
-    luminance_range = (0, -1)
-    background_color = (1, 1, 1, 1)
+# class inverted_weber_dotflash3(weber_dotflash3):
+#     taskname = 'inverted_weber_dotflash3'
+#     luminance_range = (0, -1)
+#     background_color = (1, 1, 1, 1)
 
-class inverted_weber_dotflash4(weber_dotflash4):
-    taskname = 'inverted_weber_dotflash4'
-    luminance_range = (0, -1)
-    background_color = (1, 1, 1, 1)
+# class inverted_weber_dotflash4(weber_dotflash4):
+#     taskname = 'inverted_weber_dotflash4'
+#     luminance_range = (0, -1)
+#     background_color = (1, 1, 1, 1)
 
-class inverted_weber_dotflash5(weber_dotflash5):
-    taskname = 'inverted_weber_dotflash5'
-    luminance_range = (0, -1)
-    background_color = (1, 1, 1, 1)
+# class inverted_weber_dotflash5(weber_dotflash5):
+#     taskname = 'inverted_weber_dotflash5'
+#     luminance_range = (0, -1)
+#     background_color = (1, 1, 1, 1)
 
 # class widescreen_dotflash3(widescreen_dotflash1):
 #   taskname = 'widescreen_dotflash3'
@@ -525,73 +530,73 @@ class interlaced_8x8_4(interlaced_8x8_1):
         [15, 45, 31, 47, 63, 61, 11, 41, 43,  9, 59, 13, 27, 29, 57, 25]
     )
 
-class on_off1_2hz(OnOffDotFlash):
+# class on_off1_2hz(OnOffDotFlash):
 
-    taskname = 'on_off1_2hz'
+#     taskname = 'on_off1_2hz'
 
-    # stimulus-specific parameters
-    gridshape = (6, 6)
-    gridlim = (0.9,0.9)
-    radius = 0.075
-    nvertices = 64
+#     # stimulus-specific parameters
+#     gridshape = (6, 6)
+#     gridlim = (0.9,0.9)
+#     radius = 0.075
+#     nvertices = 64
 
-    background_color = (0.5, 0.5, 0.5, 1.0)
-    dot_rgb = (1., 1., 1.)
-    luminance_step = 0.5
+#     background_color = (0.5, 0.5, 0.5, 1.0)
+#     dot_rgb = (1., 1., 1.)
+#     luminance_step = 0.5
 
-    # stimulus timing
-    initblanktime = 2.
-    finalblanktime = 10.
-    interval = 8.
-    on_duration = 1.
+#     # stimulus timing
+#     initblanktime = 2.
+#     finalblanktime = 10.
+#     interval = 8.
+#     on_duration = 1.
 
-    # photodiode triggering parameters
-    scan_hz = 2.
-    photodiodeontime = 0.075
+#     # photodiode triggering parameters
+#     scan_hz = 2.
+#     photodiodeontime = 0.075
 
-    full_nstim = np.prod(gridshape + (2,))
-    # #-----------------------------------------------------------------------
-    # gen = np.random.RandomState(0)
-    # fullpermutation = gen.permutation(full_nstim)
-    fullpermutation = np.array(
-      [26, 27, 48, 22, 30, 51,  7, 59, 34, 71, 56, 28, 31, 42, 33, 55, 70,
-       62, 43,  4, 65, 50,  2, 40, 11,  3, 54, 45, 10, 41, 49, 53, 57, 32,
-       14, 69, 19, 29, 52, 35, 18,  0, 15,  5, 16, 20, 66,  8, 13, 25, 37,
-       17, 60, 46, 63, 39, 38,  1, 58, 12, 61, 24,  6, 23, 36, 21,  9, 68,
-       67, 64, 47, 44]
-       )
+#     full_nstim = np.prod(gridshape + (2,))
+#     # #-----------------------------------------------------------------------
+#     # gen = np.random.RandomState(0)
+#     # fullpermutation = gen.permutation(full_nstim)
+#     fullpermutation = np.array(
+#       [26, 27, 48, 22, 30, 51,  7, 59, 34, 71, 56, 28, 31, 42, 33, 55, 70,
+#        62, 43,  4, 65, 50,  2, 40, 11,  3, 54, 45, 10, 41, 49, 53, 57, 32,
+#        14, 69, 19, 29, 52, 35, 18,  0, 15,  5, 16, 20, 66,  8, 13, 25, 37,
+#        17, 60, 46, 63, 39, 38,  1, 58, 12, 61, 24,  6, 23, 36, 21,  9, 68,
+#        67, 64, 47, 44]
+#        )
 
-    # #-----------------------------------------------------------------------
+#     # #-----------------------------------------------------------------------
 
-    # take the first 18 of the full 72 states
-    nstim = 18
-    permutation = fullpermutation[0*nstim:1*nstim]
+#     # take the first 18 of the full 72 states
+#     nstim = 18
+#     permutation = fullpermutation[0*nstim:1*nstim]
 
-class on_off2_2hz(on_off1_2hz):
+# class on_off2_2hz(on_off1_2hz):
 
-    taskname = 'on_off2_2hz'
+#     taskname = 'on_off2_2hz'
 
-    fullpermutation = on_off1_2hz.fullpermutation
-    nstim = on_off1_2hz.nstim
-    permutation = fullpermutation[1*nstim:2*nstim]
-
-
-class on_off3_2hz(on_off1_2hz):
-
-    taskname = 'on_off3_2hz'
-
-    fullpermutation = on_off1_2hz.fullpermutation
-    nstim = on_off1_2hz.nstim
-    permutation = fullpermutation[2*nstim:3*nstim]
+#     fullpermutation = on_off1_2hz.fullpermutation
+#     nstim = on_off1_2hz.nstim
+#     permutation = fullpermutation[1*nstim:2*nstim]
 
 
-class on_off4_2hz(on_off1_2hz):
+# class on_off3_2hz(on_off1_2hz):
 
-    taskname = 'on_off4_2hz'
+#     taskname = 'on_off3_2hz'
 
-    fullpermutation = on_off1_2hz.fullpermutation
-    nstim = on_off1_2hz.nstim
-    permutation = fullpermutation[3*nstim:4*nstim]
+#     fullpermutation = on_off1_2hz.fullpermutation
+#     nstim = on_off1_2hz.nstim
+#     permutation = fullpermutation[2*nstim:3*nstim]
+
+
+# class on_off4_2hz(on_off1_2hz):
+
+#     taskname = 'on_off4_2hz'
+
+#     fullpermutation = on_off1_2hz.fullpermutation
+#     nstim = on_off1_2hz.nstim
+#     permutation = fullpermutation[3*nstim:4*nstim]
 
 
 class _slow_on_off_bright(DotFlash):
@@ -616,6 +621,7 @@ class _slow_on_off_bright(DotFlash):
     # photodiode triggering parameters
     scan_hz = 2.
     photodiodeontime = 0.075
+    
 
 # dynamically generate 20 random permutations
 for ii in xrange(20):
@@ -634,32 +640,47 @@ for ii in xrange(20):
             'taskname':name, 'nstim':perm.shape[0]})}
         )
 
-class slow_on_off_bright4(slow_on_off_bright1):
-    subclass = 'slow_on_off'
-    taskname = 'slow_on_off_bright4'
-    nstim = slow_on_off_bright1.nstim
-    fullpermutation = slow_on_off_bright1.fullpermutation
-    permutation = fullpermutation[3*nstim:4*nstim]
 
-class slow_on_off_dark1(slow_on_off_bright1):
-    taskname = 'slow_on_off_dark1'
-    dot_color = (-1., -1., -1., 1.)
-    background_color = (1., 1., 1., 1.)
+# class slow_on_off_bright2(slow_on_off_bright1):
+#     subclass = 'slow_on_off'
+#     taskname = 'slow_on_off_bright2'
+#     nstim = slow_on_off_bright1.nstim
+#     fullpermutation = slow_on_off_bright1.fullpermutation
+#     permutation = fullpermutation[1*nstim:2*nstim]
 
-class slow_on_off_dark2(slow_on_off_bright2):
-    taskname = 'slow_on_off_dark2'
-    dot_color = (-1., -1., -1., 1.)
-    background_color = (1., 1., 1., 1.)
+# class slow_on_off_bright3(slow_on_off_bright1):
+#     subclass = 'slow_on_off'
+#     taskname = 'slow_on_off_bright3'
+#     nstim = slow_on_off_bright1.nstim
+#     fullpermutation = slow_on_off_bright1.fullpermutation
+#     permutation = fullpermutation[2*nstim:3*nstim]
 
-class slow_on_off_dark3(slow_on_off_bright3):
-    taskname = 'slow_on_off_dark3'
-    dot_color = (-1., -1., -1., 1.)
-    background_color = (1., 1., 1., 1.)
+# class slow_on_off_bright4(slow_on_off_bright1):
+#     subclass = 'slow_on_off'
+#     taskname = 'slow_on_off_bright4'
+#     nstim = slow_on_off_bright1.nstim
+#     fullpermutation = slow_on_off_bright1.fullpermutation
+#     permutation = fullpermutation[3*nstim:4*nstim]
 
-class slow_on_off_dark4(slow_on_off_bright4):
-    taskname = 'slow_on_off_dark4'
-    dot_color = (-1., -1., -1., 1.)
-    background_color = (1., 1., 1., 1.)
+# class slow_on_off_dark1(slow_on_off_bright1):
+#     taskname = 'slow_on_off_dark1'
+#     dot_color = (-1., -1., -1., 1.)
+#     background_color = (1., 1., 1., 1.)
+
+# class slow_on_off_dark2(slow_on_off_bright2):
+#     taskname = 'slow_on_off_dark2'
+#     dot_color = (-1., -1., -1., 1.)
+#     background_color = (1., 1., 1., 1.)
+
+# class slow_on_off_dark3(slow_on_off_bright3):
+#     taskname = 'slow_on_off_dark3'
+#     dot_color = (-1., -1., -1., 1.)
+#     background_color = (1., 1., 1., 1.)
+
+# class slow_on_off_dark4(slow_on_off_bright4):
+#     taskname = 'slow_on_off_dark4'
+#     dot_color = (-1., -1., -1., 1.)
+#     background_color = (1., 1., 1., 1.)
 
 
 ###############################################################################
