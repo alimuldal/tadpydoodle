@@ -115,6 +115,14 @@ class max_contrast_extra_blanktime(max_contrast_flash):
     finalblanktime = 20
 
 
+class max_contrast_slow_on_off(max_contrast_extra_blanktime):
+
+    taskname = 'max_contrast_slow_on_off'
+
+    interval = 10
+    on_duration = 5
+
+
 ###############################################################################
 # tests
 
