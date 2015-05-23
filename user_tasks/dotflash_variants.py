@@ -594,10 +594,9 @@ class on_off4_2hz(on_off1_2hz):
     permutation = fullpermutation[3*nstim:4*nstim]
 
 
-class slow_on_off_bright1(DotFlash):
+class _slow_on_off_bright(DotFlash):
 
     subclass = 'slow_on_off'
-    taskname = 'slow_on_off_bright1'
 
     # stimulus-specific parameters
     gridshape = (6, 6)
@@ -609,42 +608,31 @@ class slow_on_off_bright1(DotFlash):
     dot_color = (1., 1., 1., 1.)
 
     # stimulus timing
-    initblanktime = 2.
+    initblanktime = 10.
     finalblanktime = 10.
-    interval = 16.
-    on_duration = 8.
+    interval = 10.
+    on_duration = 5.
 
     # photodiode triggering parameters
     scan_hz = 2.
     photodiodeontime = 0.075
 
-    #-------------------------------------------------------------------------
-    # gen = np.random.RandomState(0)
-    # fullpermutation = gen.permutation(np.prod(gridshape))
-    fullpermutation = np.array(
-        [31, 20, 16, 30, 22, 15, 10,  2, 11, 29, 27, 35, 33, 28, 32,  8, 13,
-          5, 17, 14,  7, 26,  1, 12, 25, 24,  6, 23,  4, 18, 21, 19,  9, 34,
-          3,  0]
-    )
-    # ------------------------------------------------------------------------
+# dynamically generate 20 random permutations
+for ii in xrange(20):
 
-    # take the first 9 of the full 36 states
-    nstim = 9
-    permutation = fullpermutation[0*nstim:1*nstim]
+    random_state = np.random.RandomState(ii)
+    fullpermutation = random_state.permutation(6 * 6)
 
-class slow_on_off_bright2(slow_on_off_bright1):
-    subclass = 'slow_on_off'
-    taskname = 'slow_on_off_bright2'
-    nstim = slow_on_off_bright1.nstim
-    fullpermutation = slow_on_off_bright1.fullpermutation
-    permutation = fullpermutation[1*nstim:2*nstim]
+    # split into 2 x 18 stim movies
+    permutations = np.split(fullpermutation, 2)
 
-class slow_on_off_bright3(slow_on_off_bright1):
-    subclass = 'slow_on_off'
-    taskname = 'slow_on_off_bright3'
-    nstim = slow_on_off_bright1.nstim
-    fullpermutation = slow_on_off_bright1.fullpermutation
-    permutation = fullpermutation[2*nstim:3*nstim]
+    for jj, perm in enumerate(permutations):
+        name = 'slow_on_off_dots_%02i_%i' % (ii + 1, jj + 1)
+        locals().update(
+            {name:type(name, (_slow_on_off_bright,),
+            {'fullpermutation':fullpermutation, 'permutation':perm,
+            'taskname':name, 'nstim':perm.shape[0]})}
+        )
 
 class slow_on_off_bright4(slow_on_off_bright1):
     subclass = 'slow_on_off'
