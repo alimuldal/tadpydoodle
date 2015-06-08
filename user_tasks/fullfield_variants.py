@@ -117,6 +117,7 @@ class max_contrast_extra_blanktime(max_contrast_flash):
 
 class max_contrast_slow_on_off(max_contrast_extra_blanktime):
 
+    subclass = 'slow_full_field_flash'
     taskname = 'max_contrast_slow_on_off'
 
     interval = 10
