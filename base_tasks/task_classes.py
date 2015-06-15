@@ -31,6 +31,8 @@ if not gl.glBlendFuncSeparate:
 
 import wx
 
+import ipdb
+
 """
 ################################################################################
 Conventions for stimulus orientation
@@ -679,6 +681,12 @@ class Task(object):
 
                 if dt > self.finishtime and not self.finished:
                     self.finished = True
+                    ctrl = self._canvas.master.controlwindow
+                    pd_checkbox = (
+                        ctrl.optionpanel.checkboxes['show_photodiode'])
+                    pd_checkbox.ref.set(False)
+                    self._canvas.master.show_photodiode = False
+                    self._canvas.do_refresh_everything = True
                     wx.Bell()
 
                     print "Task '%s' finished: %s" % (
@@ -689,9 +697,8 @@ class Task(object):
                         self.actualstimtimes - self.theoreticalstimtimes)
 
                     if not self._canvas.master.auto_start_tasks:
-                        self._canvas.master.controlwindow.playlistpanel.onRunTask(
-                        )
-                    self._canvas.master.controlwindow.playlistpanel.Next()
+                        ctrl.playlistpanel.onRunTask()
+                    ctrl.playlistpanel.Next()
 
             self.dt = dt
 
